@@ -1,16 +1,16 @@
 # -----------------------------------------
 # deep-learning-class - Taller 1
 # Twitter User Gender Classification
-# Python 3.12 / Mac
+# Python 3.12 / Mac (recomendado; 3.13+ puede requerir versiones flexibles)
 # -----------------------------------------
 
-# Manipulacion de datos
-pandas==2.2.2
-numpy==1.26.4
+# Manipulacion de datos (>= para Python 3.13+; con 3.12 puedes usar ==)
+pandas>=2.2.2
+numpy>=1.26.4,<2
 
-# Visualizacion
-matplotlib==3.9.0
-seaborn==0.13.2
+# Visualizacion (>= para permitir wheels en Python 3.13+)
+matplotlib>=3.9.0
+seaborn>=0.13.2
 
 # Machine Learning
 scikit-learn==1.5.0

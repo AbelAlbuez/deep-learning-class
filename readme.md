@@ -1,26 +1,18 @@
 # deep-learning-class
 ## Taller 1 - Twitter User Gender Classification
 
-## Autores
-
-| Nombre          |
-|-----------------|
-| Abel Albuez     |
-| Daniel Rios     |
-| Juan Torres     |
-| Javier Esquivel |
-
 Pontificia Universidad Javeriana  
 Materia: Aprendizaje Profundo  
-Profesor: Ing. Julio Omar Palacio Nino, M.Sc.
+Profesor: Ing. Julio Omar Palacio Nino, M.Sc.  
+Autores: Abel Albuez, Daniel Rios, Juan Torres, Javier Esquivel
 
 ---
 
 ## Descripcion
 
-Analisis de clasificacion de genero de usuarios de Twitter empleando redes
-neuronales feed-forward (FFNN - MLP). Se trabaja con clasificacion binaria
-(male / female) descartando las clases `brand` y `unknown`.
+Clasificacion binaria de genero de usuarios de Twitter (male / female)
+empleando redes neuronales feed-forward (MLP) en PyTorch.
+Se descartan las clases `brand` y `unknown` por ser ambiguas.
 
 ---
 
@@ -30,19 +22,23 @@ neuronales feed-forward (FFNN - MLP). Se trabaja con clasificacion binaria
 deep-learning-class/
 ├── README.md
 ├── requirements.txt
-├── gender-classifier-DFE-791531.csv   <- dataset descargado de Kaggle
+├── .gitignore
+├── gender-classifier-DFE-791531.csv   <- dataset (no incluido en repo)
 ├── eda.py                             <- Punto 2: analisis exploratorio
-├── preprocessing.py                   <- Punto 3 y 4: limpieza y encoding
-├── train.py                           <- Puntos 5, 6 y 7: modelos y evaluacion
+├── preprocessing.py                   <- Puntos 3 y 4: limpieza y encoding
+├── models.py                          <- Punto 6: arquitecturas MLP
+├── train.py                           <- Puntos 5, 6 y 7: entrenamiento y evaluacion
+├── dataset_clean.csv                  <- output de preprocessing.py (no incluido)
+├── informe_taller1.docx               <- informe completo del taller
 ├── plots/                             <- graficas generadas automaticamente
-└── models/                            <- modelos entrenados guardados
+└── models/                            <- pesos guardados (.pt)
 ```
 
 ---
 
 ## Requisitos
 
-- Python 3.10 o superior
+- Python 3.12
 - Dataset: https://www.kaggle.com/crowdflower/twitter-user-gender-classification
 
 ---
@@ -52,19 +48,19 @@ deep-learning-class/
 ### 1. Crear el entorno virtual
 
 ```bash
-python -m venv venv
+python3 -m venv venv
 ```
 
 ### 2. Activar el entorno virtual
 
-**Windows:**
-```bash
-venv\Scripts\activate
-```
-
 **macOS / Linux:**
 ```bash
 source venv/bin/activate
+```
+
+**Windows:**
+```bash
+venv\Scripts\activate
 ```
 
 ### 3. Instalar dependencias
@@ -76,57 +72,44 @@ pip install -r requirements.txt
 ### 4. Verificar instalacion
 
 ```bash
-python -c "import torch; print('PyTorch:', torch.__version__)"
-python -c "import sklearn; print('Scikit-learn:', sklearn.__version__)"
+python3 -c "import torch; print('PyTorch:', torch.__version__)"
+python3 -c "import sklearn; print('Scikit-learn:', sklearn.__version__)"
 ```
 
 ---
 
 ## Ejecucion
 
-Asegurate de tener el entorno virtual activado antes de correr cualquier script.
-
-### Punto 2 - Analisis exploratorio (EDA)
+Orden de ejecucion recomendado:
 
 ```bash
-python eda.py
+# 1. Analisis exploratorio
+python3 eda.py
+
+# 2. Preprocesamiento
+python3 preprocessing.py
+
+# 3. Verificar arquitecturas
+python3 models.py
+
+# 4. Entrenamiento y evaluacion
+python3 train.py
 ```
 
-Genera graficas en la carpeta `plots/`.
+---
 
-### Punto 3 y 4 - Preprocesamiento
+## Resultados
 
-```bash
-python preprocessing.py
-```
-
-Genera el dataset limpio listo para entrenar.
-
-### Puntos 5, 6 y 7 - Entrenamiento y evaluacion
-
-```bash
-python train.py
-```
-
-Entrena los tres modelos y genera las matrices de confusion y metricas.
+| Modelo            | Accuracy | Precision | Recall | F1    |
+|-------------------|----------|-----------|--------|-------|
+| Perceptron        | 0.632    | 0.634     | 0.668  | 0.651 |
+| MLP 1 capa oculta | 0.630    | 0.630     | 0.685  | 0.656 |
+| MLP 2 capas ocultas | 0.638  | 0.638     | 0.690  | 0.663 |
 
 ---
 
 ## Desactivar el entorno virtual
 
-Cuando termines de trabajar:
-
 ```bash
 deactivate
 ```
-
----
-
-## Notas
-
-- El archivo CSV debe estar en la raiz del proyecto con el nombre exacto:
-  `gender-classifier-DFE-791531.csv`
-- Las carpetas `plots/` y `models/` se crean automaticamente al ejecutar los scripts.
-- Todos los scripts fueron desarrollados y probados con Python 3.10.
-- Los modelos MLP estan implementados en PyTorch.
-
