@@ -1,0 +1,27 @@
+# Virtual environment
+venv/
+.venv/
+
+# Dataset
+*.csv
+
+# Generated outputs
+plots/
+models/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
