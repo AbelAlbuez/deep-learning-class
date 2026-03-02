@@ -16,6 +16,7 @@ import os
 # -----------------------------------------------------------
 CSV_PATH        = "gender-classifier-DFE-791531.csv"
 OUTPUT_PATH     = "dataset_clean.csv"
+OUTPUT_TFIDF_PATH = "dataset_clean_tfidf.csv"
 REPORT_DIR      = "plots/"
 os.makedirs(REPORT_DIR, exist_ok=True)
 
@@ -192,6 +193,17 @@ def features_desde_texto(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def construir_dataset_tfidf(df: pd.DataFrame) -> pd.DataFrame:
+    tfidf_df = df[["gender_label", "name", "description", "text"]].copy()
+    tfidf_df["text_all"] = (
+        tfidf_df["name"].astype(str) + " " +
+        tfidf_df["description"].astype(str) + " " +
+        tfidf_df["text"].astype(str)
+    ).str.lower().str.replace(r"\s+", " ", regex=True).str.strip()
+    tfidf_df = tfidf_df[["gender_label", "text_all"]]
+    return tfidf_df
+
+
 # =============================================================
 # PASO 7: TRANSFORMACION DE FEATURES — PUNTO 4 DEL TALLER
 # =============================================================
@@ -293,15 +305,24 @@ if __name__ == "__main__":
     df = filtrar_binario(df)
     df = eliminar_columnas(df)
     df = encodear_target(df)
+
     df = tratar_nulos(df)
+    df_tfidf = construir_dataset_tfidf(df)
+
     df = features_desde_texto(df)
     df = transformar_colores(df)
-    df = transformar_profile_yn(df)
+    # df = transformar_profile_yn(df)
     df = transformar_fecha(df)
+
+    # df = df.drop(columns=["user_timezone", "profile_yn" ])
+    df = df.drop(columns=["profile_yn" ])
     df = transformar_timezone(df)
+    # eliminar columnas user_timezone
 
     verificar(df)
 
     df.to_csv(OUTPUT_PATH, index=False)
+    df_tfidf.to_csv(OUTPUT_TFIDF_PATH, index=False)
     print(f"\nDataset limpio guardado en: {OUTPUT_PATH}")
+    print(f"Dataset TF-IDF guardado en: {OUTPUT_TFIDF_PATH}")
     print("El archivo original no fue modificado.")

@@ -12,11 +12,12 @@ class Perceptron(nn.Module):
 
 
 class MLP1Hidden(nn.Module):
-    def __init__(self, n_features: int):
+    def __init__(self, n_features: int, dropout_p: float = 0.3):
         super().__init__()
         self.network = nn.Sequential(
             nn.Linear(n_features, n_features),
             nn.ReLU(),
+            nn.Dropout(dropout_p),
             nn.Linear(n_features, 1),
             nn.Sigmoid()
         )
@@ -26,14 +27,16 @@ class MLP1Hidden(nn.Module):
 
 
 class MLP2Hidden(nn.Module):
-    def __init__(self, n_features: int):
+    def __init__(self, n_features: int, dropout_p: float = 0.3):
         super().__init__()
         n_hidden = n_features // 2
         self.network = nn.Sequential(
             nn.Linear(n_features, n_hidden),
             nn.ReLU(),
+            nn.Dropout(dropout_p),
             nn.Linear(n_hidden, n_hidden),
             nn.ReLU(),
+            nn.Dropout(dropout_p),
             nn.Linear(n_hidden, 1),
             nn.Sigmoid()
         )

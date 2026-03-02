@@ -8,6 +8,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import (confusion_matrix, accuracy_score,
                              precision_score, recall_score, f1_score)
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from scipy.sparse import hstack
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -20,13 +23,103 @@ os.makedirs("models", exist_ok=True)
 # CONFIGURACION
 # -----------------------------------------------------------
 CSV_PATH   = "dataset_clean.csv"
+CSV_TFIDF_PATH = "dataset_clean_tfidf.csv"
 SEED       = 42
-EPOCHS     = 50
+EPOCHS     = 200
 BATCH_SIZE = 64
 LR         = 1e-3
 
 torch.manual_seed(SEED)
 np.random.seed(SEED)
+
+
+# =============================================================
+# TF-IDF + REGRESION LOGISTICA
+# =============================================================
+def cargar_datos_tfidf():
+    df = pd.read_csv(CSV_TFIDF_PATH)
+    X_text = df["text_all"].astype(str).values
+    y = df["gender_label"].values.astype(int)
+
+    X_train, X_temp, y_train, y_temp = train_test_split(
+        X_text, y, test_size=0.30, random_state=SEED, stratify=y
+    )
+    X_val, X_test, y_val, y_test = train_test_split(
+        X_temp, y_temp, test_size=0.50, random_state=SEED, stratify=y_temp
+    )
+    return X_train, X_val, X_test, y_train, y_val, y_test
+
+
+def entrenar_evaluar_tfidf():
+    X_train, X_val, X_test, y_train, y_val, y_test = cargar_datos_tfidf()
+
+    print(f"Train : {len(X_train)} filas")
+    print(f"Val   : {len(X_val)} filas")
+    print(f"Test  : {len(X_test)} filas\n")
+
+    word_vec = TfidfVectorizer(
+        analyzer="word",
+        ngram_range=(1, 2),
+        min_df=3,
+        max_df=0.95,
+        sublinear_tf=True,
+    )
+    char_vec = TfidfVectorizer(
+        analyzer="char_wb",
+        ngram_range=(3, 5),
+        min_df=3,
+        sublinear_tf=True,
+    )
+
+    X_train_word = word_vec.fit_transform(X_train)
+    X_val_word = word_vec.transform(X_val)
+    X_test_word = word_vec.transform(X_test)
+
+    X_train_char = char_vec.fit_transform(X_train)
+    X_val_char = char_vec.transform(X_val)
+    X_test_char = char_vec.transform(X_test)
+
+    X_train_all = hstack([X_train_word, X_train_char], format="csr")
+    X_val_all = hstack([X_val_word, X_val_char], format="csr")
+    X_test_all = hstack([X_test_word, X_test_char], format="csr")
+
+    clf = LogisticRegression(
+        max_iter=2500,
+        solver="liblinear",
+        C=2.0,
+        random_state=SEED,
+    )
+    clf.fit(X_train_all, y_train)
+
+    val_scores = clf.predict_proba(X_val_all)[:, 1]
+    thresholds = np.linspace(0.30, 0.70, 81)
+    best_threshold = 0.5
+    best_f1 = -1.0
+    for thr in thresholds:
+        val_pred = (val_scores >= thr).astype(int)
+        f1 = f1_score(y_val, val_pred, zero_division=0)
+        if f1 > best_f1:
+            best_f1 = f1
+            best_threshold = float(thr)
+
+    print(f"Mejor threshold en validacion (F1): {best_threshold:.3f}")
+
+    test_scores = clf.predict_proba(X_test_all)[:, 1]
+    y_pred = (test_scores >= best_threshold).astype(int)
+
+    metricas = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred, zero_division=0),
+        "recall": recall_score(y_test, y_pred, zero_division=0),
+        "f1": f1_score(y_test, y_pred, zero_division=0),
+    }
+
+    print(f"\n  Accuracy : {metricas['accuracy']:.4f}")
+    print(f"  Precision: {metricas['precision']:.4f}")
+    print(f"  Recall   : {metricas['recall']:.4f}")
+    print(f"  F1 Score : {metricas['f1']:.4f}")
+
+    return np.array(y_test), np.array(y_pred), metricas
 
 
 # =============================================================
@@ -247,33 +340,43 @@ def plot_comparativo(resultados):
 # MAIN
 # =============================================================
 if __name__ == "__main__":
-    train_loader, val_loader, test_loader, n_features = cargar_datos()
-
-    modelos = ["perceptron", "mlp1", "mlp2"]
-    nombres = {
-        "perceptron": "Perceptron unicapa",
-        "mlp1":       "MLP 1 capa oculta",
-        "mlp2":       "MLP 2 capas ocultas",
-    }
     resultados = {}
 
-    for key in modelos:
+    usar_tfidf = True
+    modelos = ["mlp2"]
+    nombres = {
+        "mlp2": "MLP 2 capas ocultas",
+    }
+
+    if usar_tfidf:
         print("=" * 50)
-        print(f"Entrenando: {nombres[key]}")
+        print("Entrenando: TF-IDF + Regresion Logistica")
         print("=" * 50)
+        y_true, y_pred, metricas = entrenar_evaluar_tfidf()
+        resultados["TF-IDF + LogReg"] = metricas
+        plot_confusion(y_true, y_pred, "TF-IDF + LogReg")
 
-        model    = get_model(key, n_features)
-        historia = entrenar(model, train_loader, val_loader, key)
+    if modelos:
+        train_loader, val_loader, test_loader, n_features = cargar_datos()
 
-        print(f"\nEvaluacion en test:")
-        y_true, y_pred, metricas = evaluar(model, test_loader, key)
+        for key in modelos:
+            print("=" * 50)
+            print(f"Entrenando: {nombres[key]}")
+            print("=" * 50)
 
-        resultados[nombres[key]] = metricas
+            model    = get_model(key, n_features)
+            historia = entrenar(model, train_loader, val_loader, key)
 
-        plot_historia(historia, nombres[key])
-        plot_confusion(y_true, y_pred, nombres[key])
+            print(f"\nEvaluacion en test:")
+            y_true, y_pred, metricas = evaluar(model, test_loader, key)
 
-    plot_comparativo(resultados)
+            resultados[nombres[key]] = metricas
+
+            plot_historia(historia, nombres[key])
+            plot_confusion(y_true, y_pred, nombres[key])
+
+    if len(resultados) > 1:
+        plot_comparativo(resultados)
 
     print("\n" + "=" * 50)
     print("RESUMEN FINAL")
