@@ -159,27 +159,38 @@ Volver a ejecutar el script tras una interrupción reanuda desde la última fila
 
 ## Resultados
 
-Las métricas por experimento se almacenan en [`outputs/results.csv`](outputs/results.csv):
+El mejor modelo fue **model2_e20_bs64** con test_acc=0.9722 y f1=0.9703.
 
-| Columna             | Significado                                                |
-| ------------------- | ---------------------------------------------------------- |
-| `model`             | `model1` o `model2`                                        |
-| `epochs`            | Épocas de entrenamiento                                    |
-| `batch_size`        | Tamaño de batch                                            |
-| `train_acc`         | Accuracy de entrenamiento en la última época               |
-| `val_acc`           | Accuracy de validación en la última época (split 80/20)    |
-| `test_acc`          | Accuracy sobre el conjunto de test                         |
-| `precision`         | Precisión ponderada en test                                |
-| `recall`            | Recall ponderado en test                                   |
-| `f1_score`          | F1 ponderado en test                                       |
-| `training_time_sec` | Tiempo de entrenamiento (segundos)                         |
+| Config | test_acc | f1_score | val_acc | Tiempo |
+|--------|----------|----------|---------|--------|
+| model2_e20_bs64 | 0.9722 | 0.9703 | 0.9550 | 44.5s |
+| model1_e30_bs4  | 0.9691 | 0.9685 | 0.9559 | 78.3s |
+| model2_e30_bs32 | 0.9691 | 0.9679 | 0.9584 | 75.2s |
+| model1_e10_bs16 | 0.9660 | 0.9641 | 0.9542 | 19.7s |
+| model1_e20_bs4  | 0.9660 | 0.9655 | 0.9567 | 52.4s |
 
-Un informe legible con las mejores combinaciones (por `val_acc`, `test_acc` y `f1_score`) junto con la tabla completa ordenada se guarda en [`outputs/summary.txt`](outputs/summary.txt). **Ver `outputs/summary.txt` después de ejecutar** para los resultados definitivos.
+Las métricas completas por experimento están en [`outputs/results.csv`](outputs/results.csv) y el reporte ordenado en [`outputs/summary.txt`](outputs/summary.txt). Los diagnósticos por corrida (curvas de pérdida/accuracy y matriz de confusión) se guardan en `outputs/plots/{modelo}_e{epochs}_bs{bs}_curves.png` y `..._cm.png`.
 
-Diagnósticos por corrida:
+---
 
-- `outputs/plots/{modelo}_e{epochs}_bs{bs}_curves.png` — curvas de pérdida y accuracy (train/val).
-- `outputs/plots/{modelo}_e{epochs}_bs{bs}_cm.png` — matriz de confusión sobre test.
+## Análisis por clase
+
+Si bien el accuracy global del mejor modelo alcanza 0.9722, el análisis por clase revela una debilidad crítica en **M6** (f1=0.667), clase que representa solo 8 imágenes en test y cuya apariencia visual es similar a otras señales azules de maniobra. En contraste, clases con características visuales distintivas como **W1** (triángulo amarillo) y **P10_50** (círculo rojo) alcanzan f1=1.0 en ambos modelos.
+
+| Clase | Precision | Recall | F1 | Support |
+|-------|-----------|--------|----|---------|
+| GuideSign | 0.9839 | 0.9839 | 0.9839 | 62 |
+| M1 | 0.8571 | 0.8571 | 0.8571 | 14 |
+| M4 | 0.9767 | 0.9941 | 0.9853 | 169 |
+| M5 | 1.0000 | 1.0000 | 1.0000 | 12 |
+| M6 | 1.0000 | 0.5000 | 0.6667 | 8 |
+| M7 | 0.9600 | 0.9600 | 0.9600 | 25 |
+| P1 | 0.9333 | 1.0000 | 0.9655 | 14 |
+| P10_50 | 1.0000 | 1.0000 | 1.0000 | 6 |
+| P12 | 1.0000 | 1.0000 | 1.0000 | 6 |
+| W1 | 1.0000 | 1.0000 | 1.0000 | 8 |
+
+> Nota: las métricas globales están infladas por las clases mayoritarias (M4, GuideSign). El desbalance severo del dataset es el principal factor que limita el rendimiento en clases minoritarias.
 
 ---
 
