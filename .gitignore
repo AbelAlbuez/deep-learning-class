@@ -1,2 +1,6 @@
 .DS_Store
 **/.DS_Store
+
+# Kaggle credentials
+proyecto-final/kaggle.json
+**/kaggle.json
