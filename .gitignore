@@ -4,3 +4,11 @@
 # Kaggle credentials
 proyecto-final/kaggle.json
 **/kaggle.json
+
+# Python virtual environments
+proyecto-final/.venv/
+**/.venv/
+
+# Python cache
+**/__pycache__/
+*.pyc
