@@ -1,46 +1,76 @@
-\documentclass[12pt,a4paper]{article}
-\usepackage[utf8]{inputenc}
-\usepackage[spanish]{babel}
-\usepackage{graphicx}
-\usepackage{amsmath}
-\usepackage{hyperref}
-\usepackage{booktabs}
-\usepackage{geometry}
-\geometry{margin=2.5cm}
+\documentclass[conference]{IEEEtran}
 
-\title{Reporte Técnico\\
-\large Clasificación de Tumores Cerebrales en MRI\\mediante Redes Neuronales Convolucionales}
-\author{Autores}
-\date{\today}
+% ── Paquetes ──────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage[hidelinks]{hyperref}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{cite}
+\usepackage{url}
+
+% ── Rutas de figuras ──────────────────────────────────────────────
+\graphicspath{{../../outputs/figures/}}
+
+% ── Metadatos ─────────────────────────────────────────────────────
+\title{Clasificación de Tumores Cerebrales en MRI mediante
+Redes Neuronales Convolucionales propias sobre el Dataset
+\textit{Brain Tumor Classification MRI}}
+
+\author{\IEEEauthorblockN{Abel Albuez Sánchez, Daniel Rios,
+Juan Torres y Javier Esquivel}
+\IEEEauthorblockA{Maestría en Analítica para Inteligencia de
+Negocios (MAIN)\\
+Pontificia Universidad Javeriana, Bogotá D.C., Colombia\\
+Profesor: Julio Omar Palacio Niño, M.Sc. \quad
+Aprendizaje Profundo \quad 2026}}
 
 \begin{document}
+
 \maketitle
-\tableofcontents
-\newpage
 
-\section{Objetivo del Proyecto}
+% ── Abstract ──────────────────────────────────────────────────────
+\begin{abstract}
+La clasificación automática de tumores cerebrales en imágenes
+de resonancia magnética (MRI) constituye una tarea relevante
+para el apoyo al diagnóstico radiológico. Este trabajo aborda
+la clasificación de cuatro categorías ---\textit{glioma},
+\textit{meningioma}, \textit{pituitary} y \textit{no tumor}---
+sobre el dataset público \textit{Brain Tumor Classification MRI}
+de Kaggle (3\,264 imágenes), mediante tres arquitecturas
+propias de redes neuronales convolucionales (CNN) entrenadas
+desde cero, sin emplear \textit{transfer learning}. Se reporta
+un análisis exploratorio detallado del dataset
+---incluyendo distribución por clases, dimensionalidad y
+estadísticos de intensidad---, un pipeline de preprocesamiento
+con normalización tipo ImageNet y \textit{data augmentation},
+y un protocolo de evaluación basado en \textit{F1-Score} macro,
+adecuado para escenarios con desbalance de clases.
+\end{abstract}
 
-\section{Análisis del Dataset y Dimensionalidad}
-\subsection{Descripción del Dataset}
-\subsection{Balance de Clases}
-\subsection{Análisis de Dimensionalidad}
-\subsection{Estadísticas de Intensidad}
+\begin{IEEEkeywords}
+clasificación de tumores cerebrales, redes neuronales
+convolucionales, resonancia magnética, aprendizaje profundo,
+PyTorch, F1-Score macro
+\end{IEEEkeywords}
 
-\section{Metodología}
-\subsection{Plan de Preprocesamiento}
-\subsection{Arquitectura Modelo 1 — CNN Baseline}
-\subsection{Arquitectura Modelo 2 — CNN Profunda}
-\subsection{Arquitectura Modelo 3 — CNN con Técnica Avanzada}
+% ── Secciones ─────────────────────────────────────────────────────
+\input{secciones/I_objetivo}
+\input{secciones/II_dataset}
+\input{secciones/III_metodologia}
+\input{secciones/IV_entrenamiento}
+\input{secciones/V_resultados}
+\input{secciones/VI_conclusiones}
 
-\section{Entrenamiento e Implementación}
-\subsection{Hiperparámetros}
-\subsection{Protocolo de Entrenamiento}
-
-\section{Resultados}
-\subsection{Métricas por Modelo}
-\subsection{Análisis por Clase}
-\subsection{Matrices de Confusión}
-
-\section{Conclusiones}
+% ── Referencias ───────────────────────────────────────────────────
+% \bibliographystyle{IEEEtran}
+% \bibliography{referencias}
 
 \end{document}

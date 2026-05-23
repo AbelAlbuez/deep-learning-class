@@ -1,0 +1,43 @@
+\section{Entrenamiento e Implementación}
+
+\subsection{Hiperparámetros}
+\textit{[PENDIENTE: incluir tabla comparativa de hiperparámetros
+por modelo (tasa de aprendizaje, \textit{batch size}, número de
+épocas, optimizador --- p. ej. Adam/SGD con momentum ---,
+\textit{learning rate scheduler}, \textit{weight decay} y
+función de pérdida \texttt{CrossEntropyLoss} con
+\texttt{class\_weight}).]}
+
+\subsection{Protocolo de Entrenamiento}
+\label{sec:proto}
+La implementación se realiza íntegramente en \textbf{Python} con
+\textbf{PyTorch}, mediante \textit{scripts} locales organizados
+en el directorio \texttt{src/}. El flujo de trabajo reproducible
+es el siguiente:
+
+\begin{enumerate}
+  \item Crear un entorno virtual aislado:
+        \texttt{python -m venv .venv} y activarlo.
+  \item Instalar dependencias:
+        \texttt{pip install -r requirements.txt}.
+  \item Lanzar el entrenamiento de un modelo específico:\\
+        \texttt{python src/models/train.py -{}-model N\\
+        -{}-data\_dir datasets/Training},
+        con \texttt{N} $\in \{1, 2, 3\}$.
+  \item Los \textit{checkpoints} de pesos se almacenan en
+        \texttt{outputs/results/} y las métricas por época se
+        registran incrementalmente en
+        \texttt{outputs/results/metrics.csv}.
+  \item La evaluación final sobre el conjunto de prueba se
+        ejecuta con:\\
+        \texttt{python src/models/evaluate.py -{}-model N\\
+        -{}-data\_dir datasets/Testing}.
+\end{enumerate}
+
+Se aplica una división interna \textbf{80/20} sobre el conjunto
+\textit{Training} para obtener un \textit{validation set} usado
+en la monitorización de pérdida y métricas durante el
+entrenamiento y en la selección del mejor \textit{checkpoint}.
+El conjunto \textit{Testing} original se reserva como
+\textit{holdout} independiente y solo se emplea en la evaluación
+final reportada en la sección de resultados.

@@ -1,0 +1,40 @@
+\section{Objetivo del Proyecto}
+
+\subsection{Contexto Clínico}
+El diagnóstico temprano y preciso de tumores cerebrales constituye
+uno de los retos más relevantes de la neuro-oncología
+contemporánea. La resonancia magnética (MRI, \textit{Magnetic
+Resonance Imaging}) es la modalidad de imagen de referencia para
+la detección y caracterización de estas lesiones; sin embargo, su
+interpretación depende fuertemente de la experiencia del radiólogo
+y está sujeta a variabilidad inter-observador. En este contexto,
+los sistemas de apoyo al diagnóstico basados en aprendizaje
+profundo han mostrado resultados prometedores como herramientas
+de cribado y segunda opinión, capaces de procesar grandes
+volúmenes de estudios de manera consistente.
+
+\subsection{Objetivo Técnico}
+El presente proyecto tiene como objetivo diseñar, entrenar y
+evaluar tres arquitecturas propias de redes neuronales
+convolucionales (CNN) para la clasificación automática de
+imágenes MRI cerebrales en cuatro categorías:
+\textit{glioma\_tumor}, \textit{meningioma\_tumor},
+\textit{no\_tumor} y \textit{pituitary\_tumor}. Se utiliza el
+dataset público \textit{Brain Tumor Classification MRI} disponible
+en Kaggle. De manera explícita, este trabajo \textbf{no} emplea
+técnicas de \textit{transfer learning} ni pesos preentrenados
+sobre ImageNet u otros corpus; el énfasis pedagógico está en la
+construcción de arquitecturas convolucionales desde cero y en la
+comprensión del impacto de sus hiperparámetros y bloques
+constitutivos.
+
+\subsection{Criterios de Evaluación}
+La evaluación de los modelos se realizará mediante un conjunto
+de métricas clásicas de clasificación multiclase:
+\textit{Accuracy}, \textit{Precision}, \textit{Recall} y
+\textit{F1-Score} en su variante \textit{macro-averaged},
+complementadas con la matriz de confusión por modelo. Dado el
+desbalance entre clases observado durante el análisis exploratorio
+(Sección~\ref{sec:eda}), el \textit{F1-macro} se adopta como
+métrica principal de comparación, por su robustez frente a clases
+minoritarias.

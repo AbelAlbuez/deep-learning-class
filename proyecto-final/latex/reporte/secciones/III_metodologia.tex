@@ -1,0 +1,51 @@
+\section{Metodología}
+
+\subsection{Métricas de Evaluación}
+Para evaluar las arquitecturas propuestas se emplea un conjunto
+de métricas estándar de clasificación multiclase:
+
+\begin{itemize}
+  \item \textbf{Accuracy:} proporción global de aciertos,
+        $\text{Acc} = (TP+TN)/(TP+TN+FP+FN)$.
+  \item \textbf{Precision (macro):} promedio no ponderado de la
+        precisión por clase,
+        $\tfrac{1}{C}\sum_{c} TP_c/(TP_c+FP_c)$.
+  \item \textbf{Recall (macro):} promedio no ponderado de la
+        sensibilidad por clase,
+        $\tfrac{1}{C}\sum_{c} TP_c/(TP_c+FN_c)$.
+  \item \textbf{F1-Score (macro):} media armónica de Precision y
+        Recall, $F1 = 2 \cdot P \cdot R / (P+R)$, calculada por
+        clase y promediada de forma no ponderada.
+  \item \textbf{Matriz de confusión:} análisis cualitativo de
+        los errores entre pares de clases.
+\end{itemize}
+
+Dado el desbalance descrito en la Sección~\ref{sec:eda}, la
+\textit{Accuracy} puede ser engañosa, pues un modelo que ignore
+por completo la clase \textit{no\_tumor} aún alcanzaría valores
+razonables. El \textbf{F1-Score macro} otorga el mismo peso a
+todas las clases sin considerar su frecuencia, por lo que
+penaliza explícitamente los modelos que descuidan las clases
+minoritarias. Por esta razón se adopta como métrica principal
+de comparación entre los tres modelos.
+
+\subsection{Arquitectura Modelo 1 --- CNN Baseline}
+\textit{[PENDIENTE: incluir tabla con la especificación capa por
+capa del modelo \texttt{model 1} (bloques Conv2d $\to$ ReLU
+$\to$ MaxPool, número de filtros, tamaño de kernel, capas
+\textit{fully-connected} finales y número total de parámetros
+entrenables).]}
+
+\subsection{Arquitectura Modelo 2 --- CNN Profunda}
+\textit{[PENDIENTE: descripción detallada del \texttt{model 2},
+incluyendo el uso de \textit{Batch Normalization} entre las
+capas convolucionales, \textit{Dropout} en las capas densas,
+mayor profundidad (bloques convolucionales adicionales) y
+justificación de cada elemento frente al \textit{baseline}.]}
+
+\subsection{Arquitectura Modelo 3 --- CNN con Técnica Avanzada}
+\textit{[PENDIENTE: descripción del \texttt{model 3}, integrando
+una técnica avanzada construida desde cero (por ejemplo, bloques
+residuales tipo ResNet, \textit{Global Average Pooling}, módulos
+de atención o conexiones densas), manteniendo la restricción de
+no usar pesos preentrenados.]}

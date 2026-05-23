@@ -1,0 +1,215 @@
+\section{Análisis del Dataset y Dimensionalidad}
+\label{sec:eda}
+
+\subsection{Descripción del Dataset}
+El conjunto de datos \textit{Brain Tumor Classification MRI}
+contiene \textbf{3\,264 imágenes} MRI cerebrales distribuidas en
+cuatro clases, particionadas en conjuntos de entrenamiento y
+prueba por los autores originales. La Tabla~\ref{tab:dist}
+resume su distribución.
+
+\begin{table}[H]
+\centering
+\caption{Distribución de imágenes por clase y partición.}
+\label{tab:dist}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Clase} & \textbf{Train} & \textbf{Test} & \textbf{Total} \\
+\midrule
+glioma\_tumor      & 826 & 100 & 926 \\
+meningioma\_tumor  & 822 & 115 & 937 \\
+no\_tumor          & 395 & 105 & 500 \\
+pituitary\_tumor   & 827 &  74 & 901 \\
+\midrule
+\textbf{Total}     & \textbf{2\,870} & \textbf{394} & \textbf{3\,264} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El conjunto de entrenamiento concentra el \textbf{87{,}9\,\%} de las
+imágenes (2\,870), mientras que el conjunto de prueba representa
+el \textbf{12{,}1\,\%} restante (394 imágenes). Esta partición
+oficial se respeta como \textit{holdout} independiente para la
+evaluación final, y el conjunto de entrenamiento se sub-divide
+internamente para validación (Sección~\ref{sec:proto}).
+
+\subsection{Balance de Clases}
+El análisis de balance evidencia que la clase \textit{no\_tumor}
+es la minoritaria, con aproximadamente \textbf{395} imágenes en
+entrenamiento, frente a $\sim$\textbf{825} para cada una de las
+clases tumorales. Esta proporción asimétrica ($\sim$1:2) puede
+inducir sesgos durante el aprendizaje, llevando al modelo a
+sub-representar la clase minoritaria.
+
+Como estrategia de compensación se adopta el uso de pesos por
+clase (\textit{class\_weight}) en la función de pérdida
+\textit{Cross-Entropy}, con ponderaciones inversamente
+proporcionales a la frecuencia relativa de cada clase en el
+conjunto de entrenamiento. Esto incrementa la magnitud del
+gradiente para errores cometidos sobre la clase minoritaria sin
+alterar la distribución de muestras observadas. Las
+Figuras~\ref{fig:balance} y \ref{fig:pie} ilustran gráficamente
+esta distribución.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\columnwidth]{balance_clases}
+\caption{Distribución absoluta de imágenes por clase y partición.}
+\label{fig:balance}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\columnwidth]{pie_balance}
+\caption{Proporción relativa de las clases en el conjunto de
+entrenamiento.}
+\label{fig:pie}
+\end{figure}
+
+\subsection{Análisis de Dimensionalidad}
+Se inspeccionó una muestra de 80 imágenes por clase para
+caracterizar la variabilidad en resolución espacial. El dataset
+presenta resoluciones altamente heterogéneas: las dimensiones
+máximas observadas alcanzan \textbf{1024$\times$768\,px} y las
+mínimas \textbf{59$\times$80\,px}. Además, la relación de aspecto
+varía considerablemente entre estudios, debido a las diferencias
+entre equipos de adquisición y protocolos clínicos.
+
+Dada esta heterogeneidad, se establece el redimensionamiento
+uniforme a \textbf{224$\times$224\,px} como paso obligatorio del
+pipeline. Este tamaño constituye un compromiso entre detalle
+anatómico preservado y costo computacional, y es además el formato
+canónico de las arquitecturas CNN modernas, lo que facilita
+comparaciones posteriores. Las Figuras~\ref{fig:hist-res} y
+\ref{fig:aspect} muestran respectivamente el histograma de
+resoluciones y la distribución de relaciones de aspecto.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\columnwidth]{histograma_resolucion}
+\caption{Histograma de resoluciones (ancho $\times$ alto) en el
+dataset.}
+\label{fig:hist-res}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\columnwidth]{aspecto_ratio}
+\caption{Distribución de relaciones de aspecto observadas por
+clase.}
+\label{fig:aspect}
+\end{figure}
+
+\subsection{Análisis Estadístico de Intensidades}
+Se analizaron las distribuciones de intensidad de píxeles (escala
+de grises) y canales RGB por clase, con el fin de identificar
+diferencias fotométricas discriminativas. La
+Tabla~\ref{tab:stats} resume los estadísticos descriptivos por
+clase.
+
+\begin{table}[H]
+\centering
+\caption{Estadísticas de intensidad (escala 0--255) por clase.}
+\label{tab:stats}
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Clase} & \textbf{Media} & \textbf{Std} & \textbf{Min} & \textbf{Max} & \textbf{Mediana} \\
+\midrule
+glioma\_tumor     & 36{,}23 & 41{,}43 & 0 & 255 & 14 \\
+meningioma\_tumor & 44{,}56 & 47{,}77 & 0 & 255 & 28 \\
+no\_tumor         & 52{,}21 & 59{,}63 & 0 & 255 & 22 \\
+pituitary\_tumor  & 49{,}50 & 42{,}94 & 0 & 255 & 50 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Se observa que los \textit{gliomas} presentan los valores más
+bajos de media e intensidad mediana, lo que los caracteriza como
+tejidos relativamente \textbf{hipointensos} en la modalidad
+analizada. Los tumores \textit{pituitarios}, en contraste,
+presentan la mediana más alta (50) y la menor dispersión relativa,
+indicando intensidades más concentradas y homogéneas. La clase
+\textit{no\_tumor} muestra la mayor desviación estándar (59{,}63),
+consistente con la variedad anatómica del cerebro sano sin
+focalización lesional. Estas diferencias fotométricas constituyen
+señales útiles que una CNN puede explotar a nivel de filtros
+convolucionales de bajo nivel.
+
+Para estabilizar el entrenamiento se aplicará normalización
+\textit{Z-score} sobre los tres canales utilizando los
+estadísticos canónicos de ImageNet ($\mu = [0{,}485, 0{,}456,
+0{,}406]$, $\sigma = [0{,}229, 0{,}224, 0{,}225]$). Las
+Figuras~\ref{fig:box} y \ref{fig:rgb} complementan visualmente
+este análisis.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\columnwidth]{boxplot_intensidades}
+\caption{Diagramas de caja de intensidades de píxel por clase.}
+\label{fig:box}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\columnwidth]{canales_rgb}
+\caption{Distribución de intensidades por canal RGB y por clase.}
+\label{fig:rgb}
+\end{figure}
+
+\subsection{Imagen Promedio y Muestras por Clase}
+La Figura~\ref{fig:promedio} presenta la imagen promedio por
+clase, calculada como la media píxel a píxel de 100 imágenes
+redimensionadas a 224$\times$224\,px. Los gliomas exhiben
+regiones \textbf{hipointensas difusas}, de bordes poco definidos,
+consistente con su naturaleza infiltrativa. Los tumores
+\textit{pituitarios} tienden a concentrarse en la zona central
+de la imagen, reflejando la ubicación anatómica de la glándula
+hipófisis. Los meningiomas muestran patrones intermedios con
+tendencia a localizarse en la periferia. La clase
+\textit{no\_tumor}, al promediar tejidos cerebrales sanos con
+distintas orientaciones, produce una imagen más difusa y
+centralmente simétrica.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\columnwidth]{imagen_promedio}
+\caption{Imagen promedio por clase (100 imágenes,
+224$\times$224\,px).}
+\label{fig:promedio}
+\end{figure}
+
+La Figura~\ref{fig:muestras} ilustra cinco ejemplos
+representativos por clase. Se evidencia alta variabilidad
+intra-clase en orientación, escala y contraste, lo que justifica
+el uso de \textit{data augmentation} durante el entrenamiento
+para mejorar la capacidad de generalización del modelo.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\columnwidth]{muestras_por_clase}
+\caption{Muestras representativas (5 por clase) del conjunto de
+entrenamiento.}
+\label{fig:muestras}
+\end{figure}
+
+\subsection{Plan de Preprocesamiento}
+A partir de los hallazgos anteriores, se define el pipeline de
+preprocesamiento resumido en la Tabla~\ref{tab:pipe}.
+
+\begin{table}[H]
+\centering
+\caption{Pipeline de preprocesamiento propuesto.}
+\label{tab:pipe}
+\begin{tabularx}{\columnwidth}{clX}
+\toprule
+\textbf{\#} & \textbf{Paso} & \textbf{Justificación} \\
+\midrule
+1 & Resize 224$\times$224\,px & Resoluciones heterogéneas requieren entrada uniforme. \\
+2 & Conversión a RGB & Algunas imágenes están en escala de grises; se unifica el formato. \\
+3 & Z-score ($\mu$ ImageNet) & Estabiliza el gradiente y mejora la convergencia. \\
+4 & \textit{Data augmentation} & Rotación $\pm 15^{\circ}$, flip horizontal y variación de brillo: compensa la variabilidad intra-clase. \\
+5 & \textit{class\_weight} & Compensa el desbalance de la clase \textit{no\_tumor}. \\
+6 & Split 80/20 \textit{Training} & Separa validación interna sin contaminar el \textit{holdout} oficial. \\
+\bottomrule
+\end{tabularx}
+\end{table}
