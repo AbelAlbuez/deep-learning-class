@@ -30,11 +30,99 @@ minoritarias. Por esta razón se adopta como métrica principal
 de comparación entre los tres modelos.
 
 \subsection{Arquitectura Modelo 1 --- CNN Baseline}
-\textit{[PENDIENTE: incluir tabla con la especificación capa por
-capa del modelo \texttt{model 1} (bloques Conv2d $\to$ ReLU
-$\to$ MaxPool, número de filtros, tamaño de kernel, capas
-\textit{fully-connected} finales y número total de parámetros
-entrenables).]}
+\label{sec:arq-m1}
+
+La arquitectura del Modelo~1 fue diseñada como un \textit{baseline}
+convolucional ligero, inspirado en la red OkanNet propuesta por
+Uçar y Kurt~\cite{okannet2026} y en la CNN desde cero de Gupta
+\textit{et al.}~\cite{gupta2023}. Se compone de tres bloques
+convolucionales secuenciales seguidos de un cabezal denso, sin
+emplear \textit{Batch Normalization} ni conexiones residuales, de
+modo que sirva como punto de referencia frente a los Modelos~2
+y~3.
+
+\begin{table}[!t]
+\centering
+\caption{Arquitectura del Modelo~1 (CNN Baseline). Entrada
+$(B, 3, 224, 224)$.}
+\label{tab:arq-m1}
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{4pt}
+\footnotesize
+\begin{tabular}{@{}clccccr@{}}
+\toprule
+\textbf{\#} & \textbf{Capa} & \textbf{Filt.} & \textbf{Kernel} &
+\textbf{Stride} & \textbf{Salida $(C,H,W)$} & \textbf{Params} \\
+\midrule
+1  & Conv2D       & 16 & $3{\times}3$ & 1  & $(16,224,224)$ & $448$         \\
+2  & ReLU         & -- & --           & -- & $(16,224,224)$ & $0$           \\
+3  & MaxPool2D    & -- & $2{\times}2$ & 2  & $(16,112,112)$ & $0$           \\
+4  & Conv2D       & 32 & $3{\times}3$ & 1  & $(32,112,112)$ & $4\,640$      \\
+5  & ReLU         & -- & --           & -- & $(32,112,112)$ & $0$           \\
+6  & MaxPool2D    & -- & $2{\times}2$ & 2  & $(32,56,56)$   & $0$           \\
+7  & Conv2D       & 64 & $3{\times}3$ & 1  & $(64,56,56)$   & $18\,496$     \\
+8  & ReLU         & -- & --           & -- & $(64,56,56)$   & $0$           \\
+9  & MaxPool2D    & -- & $2{\times}2$ & 2  & $(64,28,28)$   & $0$           \\
+10 & Flatten      & -- & --           & -- & $(50\,176,)$   & $0$           \\
+11 & Linear       & -- & --           & -- & $(128,)$       & $6\,422\,656$ \\
+12 & ReLU         & -- & --           & -- & $(128,)$       & $0$           \\
+13 & Dropout(0.5) & -- & --           & -- & $(128,)$       & $0$           \\
+14 & Linear       & -- & --           & -- & $(4,)$         & $516$         \\
+\midrule
+\multicolumn{6}{r}{\textbf{Total parámetros entrenables:}} & $\mathbf{6\,446\,756}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Las decisiones de diseño se justifican como sigue:
+
+\begin{itemize}
+  \item \textbf{Tres bloques convolucionales} con filtros
+        $16{\to}32{\to}64$, replicando la progresión geométrica
+        de OkanNet~\cite{okannet2026}. Esta profundidad limitada
+        deja margen explícito para que los Modelos~2 y~3
+        muestren mejoras atribuibles a su mayor complejidad.
+  \item \textbf{Kernels} $3{\times}3$ con \textit{padding}
+        \textit{same} y \textbf{MaxPool} $2{\times}2$ con
+        \textit{stride}~2: configuración estándar en la
+        literatura de clasificación MRI~\cite{gupta2023} que
+        preserva la información espacial dentro de cada bloque
+        y la reduce a la mitad entre bloques.
+  \item \textbf{Sin \textit{Batch Normalization}}: decisión
+        deliberada del enunciado, para aislar el efecto que
+        introducirá el Modelo~2 al añadir BN.
+  \item \textbf{Cabezal denso}: \texttt{Linear(50\,176, 128)}
+        $\to$ \texttt{ReLU} $\to$ \texttt{Dropout(0{,}5)} $\to$
+        \texttt{Linear(128, 4)}. El \textit{Dropout} en la única
+        capa oculta del cabezal sigue la práctica de
+        OkanNet~\cite{okannet2026} y mitiga el sobreajuste sin
+        introducir regularización adicional.
+  \item \textbf{Inicialización}: \textit{Kaiming Normal} en las
+        capas \texttt{Conv2D} (modo \texttt{fan\_out}) y en las
+        capas \texttt{Linear} (modo \texttt{fan\_in}). Esta
+        separación es crucial: una inicialización
+        \texttt{fan\_out} aplicada a
+        \texttt{Linear(50\,176, 128)} produciría una magnitud
+        de preactivaciones tan elevada que rompería la
+        convergencia, especialmente cuando se introduce BN.
+\end{itemize}
+
+El número total de parámetros entrenables es de $6\,446\,756$,
+dominado casi en su totalidad ($\approx 99{,}6$\,\%) por la
+primera capa totalmente conectada, lo cual es un patrón típico
+de arquitecturas tipo LeNet/AlexNet sin
+\textit{Global Average Pooling}.
+
+\subsubsection*{Arquitectura comparativa OkanNet}
+
+Como contraste académico se implementó una versión \emph{réplica}
+de OkanNet~\cite{okannet2026}, idéntica al Modelo~1 pero con
+\textit{Batch Normalization 2D} añadido entre cada \texttt{Conv2D}
+y su \texttt{ReLU}. El total de parámetros asciende a
+$6\,446\,980$ ($+224$ por las medias y varianzas aprendibles de
+BN), y los hiperparámetros de entrenamiento se mantienen
+idénticos al \textit{baseline} para que la única variable que
+cambia entre ambas redes sea precisamente la presencia de BN.
 
 \subsection{Arquitectura Modelo 2 --- CNN Profunda}
 \textit{[PENDIENTE: descripción detallada del \texttt{model 2},

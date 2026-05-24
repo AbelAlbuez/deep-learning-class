@@ -1,28 +1,205 @@
 \section{Resultados}
 
 \subsection{Métricas por Modelo}
-\textit{[PENDIENTE: incluir tabla comparativa con Accuracy,
-Precision (macro), Recall (macro) y F1-Score (macro) obtenidos
-sobre el conjunto de prueba para \texttt{model 1},
-\texttt{model 2} y \texttt{model 3}.]}
+\label{sec:metricas-modelo}
+
+La Tabla~\ref{tab:metricas-global} reporta las métricas globales
+sobre el conjunto de prueba \textit{Testing} (\textit{holdout}
+oficial de 394 imágenes) para el Modelo~1 (CNN Baseline) y la
+arquitectura comparativa OkanNet. Las métricas de los Modelos~2
+y~3 se reportan en sus respectivas entregas.
+
+\begin{table}[!t]
+\centering
+\caption{Métricas globales sobre \textit{Testing} (holdout de
+394 imágenes). \textit{Modelos~2 y~3 pendientes de entrega.}}
+\label{tab:metricas-global}
+\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Modelo} & \textbf{Accuracy} & \textbf{Precision} &
+\textbf{Recall} & \textbf{F1-Macro} \\
+\midrule
+Baseline (M1)   & $0{,}6751$ & $0{,}7443$ & $0{,}6508$ & $\mathbf{0{,}6252}$ \\
+OkanNet (comp.) & $0{,}4467$ & $0{,}4901$ & $0{,}4634$ & $0{,}4233$ \\
+Modelo 2        & ---        & ---        & ---        & ---        \\
+Modelo 3        & ---        & ---        & ---        & ---        \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Discusión.} El Modelo~1 alcanza un F1-Macro de
+$0{,}6252$ sobre el \textit{holdout}, mientras que durante el
+entrenamiento la métrica de validación alcanzó un máximo de
+$0{,}9231$ en la época~$33$. La diferencia de aproximadamente
+$30$ puntos entre validación y prueba refleja la distribución
+no uniforme entre los conjuntos \textit{Training} y
+\textit{Testing} del dataset Sartaj Bhuvaji, un patrón
+documentado en la literatura del corpus y conocido como
+\textit{distribution shift} entre las particiones oficiales.
+
+Contrariamente a lo esperado, la incorporación de
+\textit{Batch Normalization} (OkanNet) reduce el F1-Macro de
+$0{,}6252$ a $0{,}4233$ bajo los mismos hiperparámetros, una
+caída de $20{,}19$ puntos porcentuales. Este resultado, lejos
+de invalidar BN como técnica, sugiere que su efectividad
+depende de un régimen de hiperparámetros propio (en particular,
+\textit{batch size} mayor y posiblemente un \textit{learning
+rate} adaptado), lo cual se discute en mayor profundidad en la
+Sección~\ref{sec:conclusiones}.
 
 \subsection{Análisis por Clase}
-\textit{[PENDIENTE: tabla con F1-Score por clase para cada
-modelo, destacando las clases con menor desempeño. Se anticipa
-que \textit{meningioma\_tumor} podría ser la clase más difícil
-debido a la similitud visual de sus patrones con otras lesiones
-intracraneales.]}
+\label{sec:analisis-clase}
+
+La Tabla~\ref{tab:f1-clase} desglosa el F1-Score por clase
+sobre el conjunto \textit{Testing}.
+
+\begin{table}[!t]
+\centering
+\caption{F1-Score por clase sobre \textit{Testing}.
+\textit{Modelos~2 y~3 pendientes de entrega.}}
+\label{tab:f1-clase}
+\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Clase} & \textbf{Baseline (M1)} & \textbf{OkanNet} \\
+\midrule
+\texttt{glioma\_tumor}     & $0{,}3307$ & $0{,}2597$ \\
+\texttt{meningioma\_tumor} & $0{,}7766$ & $0{,}2517$ \\
+\texttt{no\_tumor}         & $0{,}7445$ & $0{,}5337$ \\
+\texttt{pituitary\_tumor}  & $0{,}6491$ & $0{,}6479$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Discusión.} Los resultados por clase
+\textbf{invalidan la hipótesis formulada en la
+Sección~\ref{sec:eda}}, según la cual
+\textit{meningioma\_tumor} sería la clase más difícil debido a
+la similitud visual de sus patrones con otras lesiones
+intracraneales. Empíricamente se observa lo contrario:
+\textit{meningioma\_tumor} alcanza un F1 de $0{,}7766$ (segunda
+mejor clase), mientras que \textit{glioma\_tumor} resulta ser
+la clase con peor rendimiento, con F1 de $0{,}3307$.
+
+Un análisis más detallado de las métricas de Precision y Recall
+del Modelo~1 sobre \textit{glioma\_tumor} arroja luz sobre la
+naturaleza del error: la Precision es alta ($0{,}7778$) pero el
+Recall es bajísimo ($0{,}2100$). Esto indica que, cuando el
+modelo predice \textit{glioma}, suele acertar; pero solo
+identifica como tales al $21$\,\% de los gliomas reales. El
+restante $79$\,\% se desvía hacia otras clases, principalmente
+\textit{meningioma\_tumor}, cuyo Recall de $0{,}9217$ sugiere
+que está actuando como ``clase por defecto'' para casos
+ambiguos. Este patrón no responde a una dificultad
+intrínseca del glioma sino a un sesgo del modelo en la frontera
+de decisión, agravado por el desbalance original del dataset.
+
+El hallazgo es relevante para los Modelos~2 y~3: estrategias
+como \textit{Batch Normalization} con régimen propio,
+\textit{Focal Loss} o arquitecturas con mayor capacidad de
+representación discriminativa serían las direcciones esperadas
+para corregir este desbalance de Recall por clase.
 
 \subsection{Matrices de Confusión}
-\textit{[PENDIENTE: inserción de
-\texttt{\textbackslash includegraphics} con las matrices de
-confusión generadas en \texttt{confusion\_modelN.png} para los
-tres modelos, con análisis cualitativo de los principales
-patrones de error.]}
+\label{sec:matrices-confusion}
+
+Las Figuras~\ref{fig:cm-baseline} y~\ref{fig:cm-okannet}
+muestran las matrices de confusión normalizadas sobre el
+conjunto \textit{Testing} para el Modelo~1 y OkanNet
+respectivamente.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{model-1/confusion_baseline.png}
+\caption{Matriz de confusión normalizada del Modelo~1
+(Baseline) sobre \textit{Testing}. Los valores en la diagonal
+corresponden al Recall por clase.}
+\label{fig:cm-baseline}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{model-1/confusion_okannet.png}
+\caption{Matriz de confusión normalizada de OkanNet
+(comparativa) sobre \textit{Testing}.}
+\label{fig:cm-okannet}
+\end{figure}
+
+\noindent\textbf{Patrones observados.} En el Modelo~1, el
+patrón de error dominante es la confusión
+\textit{glioma}~$\to$~\textit{meningioma}: aproximadamente el
+$79$\,\% de los gliomas reales se clasifican erróneamente, en
+su mayoría como meningioma, lo cual coincide con el análisis de
+Recall reportado en la Sección~\ref{sec:analisis-clase}. La
+clase \textit{no\_tumor} se identifica correctamente en
+$\approx 97$\,\% de los casos, consistente con la diferencia
+fotométrica clara documentada en el EDA.
+
+En OkanNet, las confusiones se distribuyen más uniformemente
+entre todas las clases, reflejando la falta de convergencia del
+modelo bajo el régimen de hiperparámetros impuesto. Las
+clases \textit{glioma\_tumor} y \textit{meningioma\_tumor}
+muestran patrones de error particularmente erráticos.
 
 \subsection{Curvas de Entrenamiento}
-\textit{[PENDIENTE: curvas de \textit{loss} y \textit{accuracy}
-(train vs.\ val) por época para cada modelo, generadas desde
-\texttt{outputs/results/metrics.csv}, con análisis de
-convergencia, presencia de \textit{overfitting} y efectividad
-del \textit{scheduler}.]}
+\label{sec:curvas}
+
+La Figura~\ref{fig:curvas-baseline} muestra la evolución de
+\textit{loss}, \textit{accuracy}, F1-macro y \textit{learning
+rate} por época durante el entrenamiento del Modelo~1.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{model-1/curvas_baseline.png}
+\caption{Curvas de entrenamiento del Modelo~1 (Baseline):
+pérdida, \textit{accuracy}, F1-macro y \textit{learning rate}
+en función de la época.}
+\label{fig:curvas-baseline}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{model-1/curvas_okannet.png}
+\caption{Curvas de entrenamiento de OkanNet (comparativa).
+Nótese la convergencia inestable y el disparo del \textit{early
+stopping} en la época~$17$.}
+\label{fig:curvas-okannet}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{model-1/comparacion_baseline_okannet.png}
+\caption{Comparación del F1-Macro de validación entre Baseline
+y OkanNet a lo largo del entrenamiento.}
+\label{fig:comparacion}
+\end{figure}
+
+\noindent\textbf{Análisis de convergencia.} El Baseline alcanza
+su mejor F1-macro de validación ($0{,}9231$) en la
+época~$33$ y agota el presupuesto máximo de $40$ épocas sin
+disparar el \textit{early stopping}, lo que sugiere que el
+modelo aún no había convergido completamente y podría
+beneficiarse de un entrenamiento más prolongado o de un
+\textit{scheduler} de \textit{learning rate} más agresivo.
+
+En contraste, OkanNet exhibe convergencia inestable desde el
+inicio (\textit{train loss} inicial de $4{,}77$, vs.\ $1{,}03$
+del Baseline) y dispara el \textit{early stopping} en la
+época~$17$, alcanzando un F1-macro máximo de validación de solo
+$0{,}6542$. El \textit{scheduler}
+\texttt{ReduceLROnPlateau} reduce el \textit{learning rate} en
+varias ocasiones durante el entrenamiento de OkanNet sin lograr
+estabilizar la métrica de validación. Este comportamiento es
+consistente con la sensibilidad conocida de
+\textit{Batch Normalization} al tamaño de \textit{batch} y a
+la magnitud del \textit{learning rate}: con $\text{batch}=32$ y
+$\text{lr}=10^{-3}$, BN amplifica el ruido de las estadísticas
+por \textit{mini-batch}, perjudicando la convergencia.
+
+La Figura~\ref{fig:comparacion} sintetiza visualmente este
+contraste: el Baseline mantiene una trayectoria de mejora
+monótona, mientras que OkanNet oscila y converge a un máximo
+sustancialmente inferior.

@@ -1,12 +1,56 @@
 \section{Entrenamiento e Implementación}
 
 \subsection{Hiperparámetros}
-\textit{[PENDIENTE: incluir tabla comparativa de hiperparámetros
-por modelo (tasa de aprendizaje, \textit{batch size}, número de
-épocas, optimizador --- p. ej. Adam/SGD con momentum ---,
-\textit{learning rate scheduler}, \textit{weight decay} y
-función de pérdida \texttt{CrossEntropyLoss} con
-\texttt{class\_weight}).]}
+\label{sec:hiperparam}
+
+La Tabla~\ref{tab:hiperparam} resume los hiperparámetros
+empleados para entrenar el Modelo~1 y su comparativa OkanNet.
+Para garantizar una comparación científicamente limpia, se
+mantienen idénticos en ambas arquitecturas; la única diferencia
+controlada entre ellas es la presencia de
+\textit{Batch Normalization}.
+
+\begin{table}[!t]
+\centering
+\caption{Hiperparámetros del Modelo~1 (Baseline) y OkanNet.}
+\label{tab:hiperparam}
+\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Hiperparámetro} & \textbf{Baseline} & \textbf{OkanNet} \\
+\midrule
+Optimizador               & Adam                      & Adam                      \\
+\quad $(\beta_1, \beta_2)$ & $(0{,}9, 0{,}999)$        & $(0{,}9, 0{,}999)$        \\
+Learning rate inicial     & $1\times 10^{-3}$         & $1\times 10^{-3}$         \\
+Scheduler                 & ReduceLROnPlateau         & ReduceLROnPlateau         \\
+\quad factor / patience   & $0{,}5$ / $3$             & $0{,}5$ / $3$             \\
+\quad $\eta_{\min}$       & $1\times 10^{-6}$         & $1\times 10^{-6}$         \\
+Función de pérdida        & \texttt{CrossEntropyLoss} & \texttt{CrossEntropyLoss} \\
+\quad con                 & \texttt{class\_weight}    & \texttt{class\_weight}    \\
+\textit{Weight decay}     & $0$                       & $0$                       \\
+\textit{Batch size}       & $32$                      & $32$                      \\
+\textit{Epochs} máx.      & $40$                      & $40$                      \\
+\textit{Early stopping}   & patience $=7$             & patience $=7$             \\
+\quad criterio            & F1-macro val.             & F1-macro val.             \\
+\textit{Split} train/val  & 80\,\%\,/\,20\,\%          & 80\,\%\,/\,20\,\%          \\
+\textit{Seed}             & $42$                      & $42$                      \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El uso de \texttt{class\_weight} en la función de pérdida es un
+diferencial del presente trabajo frente a las referencias
+revisadas~\cite{okannet2026,gupta2023}, ninguna de las cuales
+incorpora corrección explícita del desbalance de clases. Los
+pesos se calculan con la fórmula \textit{balanced} de
+\texttt{scikit-learn}, inversamente proporcionales a la
+frecuencia de cada clase en \textit{Training}.
+
+El tiempo de entrenamiento sobre Apple Silicon con backend MPS
+fue de $7$\,min $44$\,s para el Baseline y $3$\,min $39$\,s
+para OkanNet, este último interrumpido por \textit{early
+stopping} en la época~$17$.
 
 \subsection{Protocolo de Entrenamiento}
 \label{sec:proto}
