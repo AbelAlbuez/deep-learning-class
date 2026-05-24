@@ -168,7 +168,7 @@ bajo el backend MPS de Apple, que requiere que el tamaño de
 entrada sea divisible por el de salida (14 es divisible por
 2, 7 no lo es).
 
-\begin{table}[!t]
+\begin{table*}[!t]
 \centering
 \caption{\textit{Backbone} convolucional compartido por
 DeepCNN-BN y DeepCNN-BN-GAP. Entrada $(B, 3, 224, 224)$.
@@ -176,7 +176,7 @@ Cada bloque ejecuta dos \texttt{Conv2D}-BN-ReLU consecutivas
 antes del \texttt{MaxPool} y \texttt{Dropout2D}.}
 \label{tab:arq-m2-backbone}
 \renewcommand{\arraystretch}{1.15}
-\setlength{\tabcolsep}{4pt}
+\setlength{\tabcolsep}{6pt}
 \footnotesize
 \begin{tabular}{@{}clcccr@{}}
 \toprule
@@ -192,7 +192,7 @@ antes del \texttt{MaxPool} y \texttt{Dropout2D}.}
 \multicolumn{5}{r}{\textbf{Subtotal \textit{backbone}:}} & $\mathbf{4\,716\,192}$ \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
 \subsubsection*{Cabezales: DeepCNN-BN vs DeepCNN-BN-GAP}
 
@@ -224,7 +224,7 @@ fuerza al \textit{backbone} a producir mapas semánticamente
 significativos, e introduce una regularización estructural
 implícita al eliminar $\sim$524\,K parámetros del cabezal.
 
-\begin{table}[!t]
+\begin{table*}[!t]
 \centering
 \caption{Cabezales y conteo de parámetros de las dos variantes
 del Modelo~2.}
@@ -248,7 +248,7 @@ Linear salida        & $256{\to}4$       & $512{\to}4$ \\
 \textbf{Total entrenable} & $\mathbf{5\,240\,292}$ & $\mathbf{4\,716\,260}$ \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
 \subsubsection*{Justificación de las decisiones de diseño}
 
