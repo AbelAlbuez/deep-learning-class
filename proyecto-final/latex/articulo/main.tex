@@ -1,49 +1,175 @@
 \documentclass[conference]{IEEEtran}
 \usepackage[utf8]{inputenc}
-\usepackage[spanish]{babel}
+\usepackage[spanish,es-nodecimaldot]{babel}
 \usepackage{graphicx}
 \usepackage{amsmath}
+\usepackage{booktabs}
 \usepackage{cite}
 \usepackage{hyperref}
+\usepackage{float}
 
-\title{Clasificación de Tumores Cerebrales en MRI mediante Redes Neuronales Convolucionales}
+\graphicspath{{../../outputs/figures/}}
 
-\author{
-\IEEEauthorblockN{Autor 1, Autor 2}
-\IEEEauthorblockA{Maestría en Analítica para Inteligencia de Negocios\\
-Pontificia Universidad Javeriana, Bogotá, Colombia}
-}
+\title{Clasificación de Tumores Cerebrales en MRI mediante
+Redes Neuronales Convolucionales propias sobre el Dataset
+\textit{Brain Tumor Classification MRI}}
+
+\author{\IEEEauthorblockN{Abel Albuez Sánchez, Daniel Rios,
+Juan Torres y Javier Esquivel}
+\IEEEauthorblockA{Maestría en Analítica para Inteligencia de
+Negocios (MAIN)\\
+Pontificia Universidad Javeriana, Bogotá D.C., Colombia\\
+Profesor: Julio Omar Palacio Niño, M.Sc. \quad
+Aprendizaje Profundo \quad 2026}}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Resumen del trabajo. Máximo 150 palabras.
+% [PENDIENTE: Resumen del trabajo, máx. 150 palabras.]
+Resumen del trabajo.
 \end{abstract}
 
 \begin{IEEEkeywords}
-redes neuronales convolucionales, clasificación de imágenes, tumores cerebrales, MRI, aprendizaje profundo
+redes neuronales convolucionales, clasificación de imágenes,
+tumores cerebrales, MRI, aprendizaje profundo, F1-Score macro
 \end{IEEEkeywords}
 
 \section{Introducción}
-% Contexto, problema, motivación y contribuciones del trabajo.
+% [PENDIENTE Abel: Contexto, problema, motivación y contribuciones.]
 
 \section{Objetivos}
-% Objetivo general y objetivos específicos.
+% [PENDIENTE Abel: Objetivo general y objetivos específicos.]
 
 \section{Análisis del Problema}
-% Descripción del dataset, EDA, balance de clases, dimensionalidad.
+% [PENDIENTE Abel: Descripción del dataset, EDA, balance de clases.]
 
 \section{Construcción, Entrenamiento e Implementación}
-% Arquitecturas propuestas, hiperparámetros, protocolo de entrenamiento.
+
+\subsection{Modelo 1 --- CNN Baseline}
+% [PENDIENTE Abel: §III-A, descripción del baseline + OkanNet.]
+
+\subsection{Modelo 2 --- CNN Profunda con BN y Dropout}
+\label{sec:art-m2}
+
+El Modelo~2 se motiva en una observación del Modelo~1: la
+versión comparativa OkanNet, que añade \textit{Batch
+Normalization} sobre el baseline manteniendo el resto de
+hiperparámetros, colapsa a un F1-macro de $0{,}4233$ frente a
+los $0{,}6252$ del baseline. La hipótesis es que el colapso no
+se debe a BN como técnica sino a su sensibilidad al régimen de
+entrenamiento (lr=$10^{-3}$, bs=$32$). El Modelo~2 contrasta
+esta hipótesis con una red sustancialmente más profunda
+---$10$ capas convolucionales VGG-style frente a $3$ del
+baseline--- entrenada con un régimen propio: AdamW,
+lr=$5\times 10^{-4}$, bs=$64$, weight decay=$10^{-4}$,
+$50$ épocas.
+
+Se construyen dos variantes que comparten el mismo
+\textit{backbone} convolucional pero difieren en el cabezal:
+
+\begin{itemize}
+  \item \textbf{DeepCNN-BN.} Cabezal denso clásico con
+        \texttt{AdaptiveAvgPool2D}$(2,2) \to$
+        \texttt{Linear}$(2048, 256) \to$ BN1D $\to$ ReLU $\to$
+        Dropout$(0{,}5) \to$ \texttt{Linear}$(256, 4)$.
+        Total: $5\,240\,292$ parámetros.
+  \item \textbf{DeepCNN-BN-GAP.} \textit{Global Average
+        Pooling} en lugar del FC denso:
+        \texttt{AdaptiveAvgPool2D}$(1,1) \to$
+        Dropout$(0{,}5) \to$ \texttt{Linear}$(512, 4)$.
+        Total: $4\,716\,260$ parámetros ($-524$\,K respecto a
+        la variante FC).
+\end{itemize}
+
+El \textit{backbone} se compone de cinco bloques con dos
+\texttt{Conv2D} $3{\times}3$ + \texttt{BatchNorm2D} + ReLU
+cada uno, con \texttt{MaxPool}$2{\times}2$ y \texttt{Dropout2D}
+de tasa creciente ($0{,}10 \to 0{,}30$) entre bloques. La
+progresión de filtros es $32{\to}64{\to}128{\to}256{\to}512$.
+El último bloque omite el \texttt{MaxPool} para producir
+salida $14{\times}14$, requisito de divisibilidad del backend
+MPS bajo \texttt{AdaptiveAvgPool2D}.
+
+La hipótesis a contrastar entre las dos variantes es si el
+cabezal denso aporta capacidad discriminativa real frente al
+GAP cuando el \textit{backbone} ya tiene profundidad
+suficiente.
+
+\subsection{Modelo 3 --- CNN con Técnica Avanzada}
+% [PENDIENTE Javier: §III-D, modelo 3.]
 
 \section{Resultados}
-% Tablas y figuras con métricas por modelo y por clase.
+
+% [PENDIENTE Abel: §V parcial Modelo 1 (Baseline + OkanNet).]
+
+\subsection{Modelo 2: Resultados sobre \textit{Testing}}
+\label{sec:art-resultados-m2}
+
+La Tabla~\ref{tab:art-metricas-m2} reporta las métricas
+globales sobre el conjunto \textit{Testing} (holdout oficial de
+$394$ imágenes).
+
+\begin{table}[!t]
+\centering
+\caption{Métricas globales del Modelo~2 sobre \textit{Testing}.}
+\label{tab:art-metricas-m2}
+\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Modelo} & \textbf{Acc.} & \textbf{Prec.} &
+\textbf{Rec.} & \textbf{F1-Macro} \\
+\midrule
+Baseline (M1, ref.) & $0{,}6751$ & $0{,}7443$ & $0{,}6508$ & $0{,}6252$ \\
+OkanNet (M1, ref.)  & $0{,}4467$ & $0{,}4901$ & $0{,}4634$ & $0{,}4233$ \\
+\textbf{DeepCNN-BN}     & $0{,}6472$ & $0{,}7403$ & $0{,}6351$ & $\mathbf{0{,}5961}$ \\
+\textbf{DeepCNN-BN-GAP} & $0{,}5558$ & $0{,}6765$ & $0{,}5482$ & $0{,}5176$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Tres observaciones se desprenden:
+
+\paragraph*{(1) BN funciona con régimen propio} DeepCNN-BN
+supera a OkanNet en $17{,}28$ puntos porcentuales de F1-macro
+($0{,}5961$ vs $0{,}4233$), pese a tener $\sim 3{,}3\times$
+más capas convolucionales con BN. Las curvas de validación
+de ambas variantes del Modelo~2 son monótonas crecientes y
+alcanzan F1-val de $0{,}9112$ y $0{,}8988$ respectivamente,
+sin disparar \textit{early stopping}. Esto invalida la
+interpretación ``BN es perjudicial'' del Modelo~1 y la
+reformula como ``BN es sensible al régimen de
+hiperparámetros''.
+
+\paragraph*{(2) FC supera a GAP} La variante con cabezal denso
+mejora a la variante GAP en $7{,}85$ puntos de F1-macro, pese a
+compartir el \textit{backbone}. La brecha se concentra en
+\textit{meningioma\_tumor} ($+14{,}6$ pp), clase con mayor
+variabilidad intra-clase. Los $524$\,K parámetros adicionales
+del cabezal FC sí aportan capacidad discriminativa real en
+este corpus.
+
+\paragraph*{(3) Distribution shift domina} Ambas variantes
+sufren una caída de $\sim 30$ puntos entre validación y
+prueba, idéntica a la del baseline. DeepCNN-BN \emph{no}
+supera al baseline en \textit{Testing} ($-2{,}91$ pp). Esto
+indica que la limitación dominante no es la capacidad del
+modelo sino la divergencia distribucional entre
+\textit{Training} y \textit{Testing} en el dataset oficial.
+La clase \textit{glioma\_tumor} resulta particularmente
+afectada: Precision de $1{,}0000$ (sin falsos positivos) pero
+Recall de $0{,}1600$, patrón que reproduce el sesgo
+\textit{glioma}~$\to$~\textit{meningioma} del baseline. El
+aumento de capacidad arquitectónica no resuelve este sesgo.
+
+\subsection{Modelo 3: Resultados}
+% [PENDIENTE Javier]
 
 \section{Conclusiones}
-% Hallazgos principales, limitaciones y trabajo futuro.
+% [PENDIENTE Javier: Hallazgos principales, limitaciones y trabajo futuro.]
 
-\bibliographystyle{IEEEtran}
-\bibliography{referencias}
+% \bibliographystyle{IEEEtran}
+% \bibliography{referencias}
 
 \end{document}

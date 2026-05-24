@@ -5,9 +5,9 @@
 
 La Tabla~\ref{tab:metricas-global} reporta las métricas globales
 sobre el conjunto de prueba \textit{Testing} (\textit{holdout}
-oficial de 394 imágenes) para el Modelo~1 (CNN Baseline) y la
-arquitectura comparativa OkanNet. Las métricas de los Modelos~2
-y~3 se reportan en sus respectivas entregas.
+oficial de 394 imágenes) para el Modelo~1 (CNN Baseline +
+OkanNet) y el Modelo~2 (DeepCNN-BN y DeepCNN-BN-GAP). Las
+métricas del Modelo~3 se reportan en su respectiva entrega.
 
 \begin{table}[!t]
 \centering
@@ -21,10 +21,11 @@ y~3 se reportan en sus respectivas entregas.
 \textbf{Modelo} & \textbf{Accuracy} & \textbf{Precision} &
 \textbf{Recall} & \textbf{F1-Macro} \\
 \midrule
-Baseline (M1)   & $0{,}6751$ & $0{,}7443$ & $0{,}6508$ & $\mathbf{0{,}6252}$ \\
-OkanNet (comp.) & $0{,}4467$ & $0{,}4901$ & $0{,}4634$ & $0{,}4233$ \\
-Modelo 2        & ---        & ---        & ---        & ---        \\
-MRIResNet (M3)  & ---        & ---        & ---        & ---        \\
+Baseline (M1)         & $0{,}6751$ & $0{,}7443$ & $0{,}6508$ & $0{,}6252$ \\
+OkanNet (comp.)       & $0{,}4467$ & $0{,}4901$ & $0{,}4634$ & $0{,}4233$ \\
+DeepCNN-BN (M2)       & $0{,}6472$ & $0{,}7403$ & $0{,}6351$ & $0{,}5961$ \\
+DeepCNN-BN-GAP (M2)   & $0{,}5558$ & $0{,}6765$ & $0{,}5482$ & $0{,}5176$ \\
+MRIResNet (M3)        & $\mathbf{0{,}7107}$ & $\mathbf{0{,}7947}$ & $\mathbf{0{,}6992}$ & $\mathbf{0{,}6593}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -49,6 +50,58 @@ depende de un régimen de hiperparámetros propio (en particular,
 rate} adaptado), lo cual se discute en mayor profundidad en la
 Sección~\ref{sec:conclusiones}.
 
+\subsubsection*{Modelo 2: DeepCNN-BN y DeepCNN-BN-GAP}
+
+El Modelo~2 alcanza F1-Macro de $0{,}5961$ en su variante con
+cabezal FC (DeepCNN-BN) y $0{,}5176$ en la variante con
+\textit{Global Average Pooling} (DeepCNN-BN-GAP) sobre el
+\textit{holdout}. En validación los máximos fueron de
+$0{,}9112$ (DeepCNN-BN, época~$50$) y $0{,}8988$ (DeepCNN-BN-GAP,
+época~$49$), respectivamente. De estos números se desprenden
+tres observaciones de fondo:
+
+\paragraph*{(1) BN sí funciona bajo un régimen propio.}
+La variante DeepCNN-BN, con $10$ capas convolucionales y BN tras
+cada \texttt{Conv2D}, supera a OkanNet en $17{,}28$ puntos
+porcentuales de F1-Macro ($0{,}5961$ vs $0{,}4233$) sobre el
+\textit{holdout}, pese a tener $\sim 3{,}3\times$ más capas
+convolucionales con BN. Esto valida la hipótesis sostenida en la
+Sección~\ref{sec:arq-m2}: el colapso de OkanNet no es atribuible
+a BN como técnica, sino a la combinación lr=$10^{-3}$ y
+batch=$32$ heredada del Modelo~1, que amplifica el ruido de las
+estadísticas por \textit{mini-batch}. Bajo lr=$5\times 10^{-4}$
+y batch=$64$, el Modelo~2 converge de manera estable y sin
+oscilaciones, agotando casi por completo el presupuesto de $50$
+épocas (\textit{early stopping} no se dispara).
+
+\paragraph*{(2) El cabezal FC aporta capacidad discriminativa.}
+La diferencia entre DeepCNN-BN y DeepCNN-BN-GAP es de $7{,}85$
+puntos porcentuales de F1-Macro a favor del cabezal denso
+($0{,}5961$ vs $0{,}5176$), pese a que la variante GAP usa
+$524$\,K parámetros menos ($-10$\,\% del total). Esto contradice
+la hipótesis ``GAP rinde equivalentemente cuando el
+\textit{backbone} es suficientemente profundo'' formulada en la
+Sección~\ref{sec:arq-m2}: en este dataset, las $\sim 524$\,K
+parámetros adicionales del cabezal FC sí se traducen en mayor
+capacidad de discriminación, particularmente en las clases
+\textit{meningioma\_tumor} y \textit{no\_tumor} (véase
+Tabla~\ref{tab:f1-clase}).
+
+\paragraph*{(3) Distribution shift domina la métrica.} Tanto el
+Modelo~1 como el Modelo~2 sufren una caída de aproximadamente
+$30$ puntos entre validación y prueba (Baseline:
+$0{,}92 \to 0{,}63$; DeepCNN-BN: $0{,}91 \to 0{,}60$;
+DeepCNN-BN-GAP: $0{,}90 \to 0{,}52$). Pese a triplicar la
+profundidad y añadir regularización agresiva (BN, Dropout2d,
+weight decay), el Modelo~2 no logra superar al baseline en test
+($-2{,}91$ puntos en F1-Macro). Este hallazgo refuerza la idea
+de que la limitación dominante no es la capacidad del modelo
+sino la divergencia distribucional entre \textit{Training} y
+\textit{Testing} del dataset Sartaj Bhuvaji: una arquitectura
+con mayor capacidad y mayor regularización converge a la
+distribución de \textit{Training} con mayor eficacia, pero esa
+misma especialización no transfiere al \textit{Testing}.
+
 \subsection{Análisis por Clase}
 \label{sec:analisis-clase}
 
@@ -61,15 +114,16 @@ sobre el conjunto \textit{Testing}.
 \label{tab:f1-clase}
 \renewcommand{\arraystretch}{1.15}
 \footnotesize
-\begin{tabular}{@{}lcccc@{}}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lccccc@{}}
 \toprule
-\textbf{Clase} & \textbf{Baseline (M1)} & \textbf{OkanNet} &
-\textbf{M2} & \textbf{MRIResNet (M3)} \\
+\textbf{Clase} & \textbf{Baseline} & \textbf{OkanNet} &
+\textbf{DeepCNN-BN} & \textbf{DeepCNN-GAP} & \textbf{MRIResNet} \\
 \midrule
-\texttt{glioma\_tumor}     & $0{,}3307$ & $0{,}2597$ & --- & --- \\
-\texttt{meningioma\_tumor} & $0{,}7766$ & $0{,}2517$ & --- & --- \\
-\texttt{no\_tumor}         & $0{,}7445$ & $0{,}5337$ & --- & --- \\
-\texttt{pituitary\_tumor}  & $0{,}6491$ & $0{,}6479$ & --- & --- \\
+\texttt{glioma\_tumor}     & $\mathbf{0{,}3307}$ & $0{,}2597$ & $0{,}2759$ & $0{,}2735$ & $0{,}2906$ \\
+\texttt{meningioma\_tumor} & $0{,}7766$ & $0{,}2517$ & $0{,}7137$ & $0{,}5676$ & $\mathbf{0{,}7912}$ \\
+\texttt{no\_tumor}         & $0{,}7445$ & $0{,}5337$ & $0{,}7331$ & $0{,}6355$ & $\mathbf{0{,}7816}$ \\
+\texttt{pituitary\_tumor}  & $0{,}6491$ & $0{,}6479$ & $0{,}6618$ & $0{,}5938$ & $\mathbf{0{,}7737}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -102,6 +156,45 @@ como \textit{Batch Normalization} con régimen propio,
 \textit{Focal Loss} o arquitecturas con mayor capacidad de
 representación discriminativa serían las direcciones esperadas
 para corregir este desbalance de Recall por clase.
+
+\subsubsection*{Modelo 2: persistencia del cuello de botella en glioma}
+
+El Modelo~2 \textbf{no resuelve} el desbalance de Recall por
+clase identificado en el Modelo~1. La clase
+\textit{glioma\_tumor} sigue siendo la más difícil para ambas
+variantes (F1 de $0{,}2759$ en DeepCNN-BN y $0{,}2735$ en
+DeepCNN-BN-GAP), con un patrón Precision-Recall que reproduce
+casi literalmente el del baseline: Precision elevada
+($1{,}0000$ en DeepCNN-BN y $0{,}9412$ en DeepCNN-BN-GAP) frente
+a Recall muy bajo ($0{,}1600$ en ambos casos). En el caso de
+DeepCNN-BN, la Precision de $1{,}0000$ implica que
+\emph{ningún} falso positivo de glioma se cometió en
+\textit{Testing}: cuando el modelo predice glioma, acierta el
+$100$\,\% de las veces, pero solo identifica como gliomas al
+$16$\,\% de los gliomas reales.
+
+Este resultado confirma que el cuello de botella no es
+arquitectónico (más profundidad y más BN no lo resuelven) sino
+distribucional. La hipótesis más probable es que los gliomas
+del conjunto \textit{Testing} provienen de subtipos
+histopatológicos o protocolos de adquisición sub-representados
+en \textit{Training}, lo que el modelo no puede compensar sin
+intervención en los datos.
+
+\subsubsection*{Modelo 2: el cabezal FC mejora todas las clases ``aprendibles''}
+
+Excluyendo \textit{glioma\_tumor} (que es prácticamente
+incompresible en este \textit{split}), la diferencia entre
+DeepCNN-BN y DeepCNN-BN-GAP es consistente: el cabezal FC
+mejora F1 en las tres clases restantes, con la brecha más
+amplia en \textit{meningioma\_tumor} ($0{,}7137$ vs $0{,}5676$,
+$+14{,}6$ pp) y la más estrecha en \textit{pituitary\_tumor}
+($0{,}6618$ vs $0{,}5938$, $+6{,}8$ pp). Este patrón sugiere
+que el cabezal FC denso permite al modelo aprender fronteras
+de decisión más finas en clases con alta variabilidad
+intra-clase ---como el meningioma--- mientras que el GAP es
+suficiente para clases con patrón fotométrico más homogéneo
+---como la hipófisis y la ausencia de tumor.
 
 \subsection{Matrices de Confusión}
 \label{sec:matrices-confusion}
@@ -143,6 +236,52 @@ entre todas las clases, reflejando la falta de convergencia del
 modelo bajo el régimen de hiperparámetros impuesto. Las
 clases \textit{glioma\_tumor} y \textit{meningioma\_tumor}
 muestran patrones de error particularmente erráticos.
+
+Las Figuras~\ref{fig:cm-deep} y~\ref{fig:cm-deepgap} muestran
+las matrices de confusión del Modelo~2 en sus dos variantes.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{model-2/confusion_deep.png}
+\caption{Matriz de confusión normalizada de DeepCNN-BN (cabezal
+FC) sobre \textit{Testing}.}
+\label{fig:cm-deep}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{model-2/confusion_deep_gap.png}
+\caption{Matriz de confusión normalizada de DeepCNN-BN-GAP
+(\textit{Global Average Pooling}) sobre \textit{Testing}.}
+\label{fig:cm-deepgap}
+\end{figure}
+
+\noindent\textbf{Patrones del Modelo~2.} En DeepCNN-BN
+(Fig.~\ref{fig:cm-deep}) el sesgo \textit{glioma}~$\to$~\textit{
+meningioma} del baseline \textbf{persiste y se intensifica}: la
+diagonal de glioma cae a $16$\,\% ($84$\,\% de gliomas
+clasificados como otra cosa, dominantemente meningioma). El
+modelo gana precisión en glioma (no produce falsos positivos)
+pero sacrifica recall, alcanzando un equilibrio
+Precision-Recall que beneficia a las clases mayoritarias del
+\textit{Training}. La clase \textit{no\_tumor} se identifica
+con un Recall del $98$\,\%, ligeramente superior al $97$\,\%
+del baseline, lo cual reafirma que el contraste fotométrico de
+ausencia de lesión es la señal más robusta entre splits.
+
+En DeepCNN-BN-GAP (Fig.~\ref{fig:cm-deepgap}) el patrón de
+errores se mantiene cualitativamente pero con magnitudes más
+moderadas: la confusión \textit{glioma}~$\to$~\textit{
+meningioma} es similar, pero aparece una segunda fuente de
+error notable en \textit{meningioma}~$\to$~\textit{no\_tumor}
+que no estaba presente en DeepCNN-BN. Esto sugiere que GAP, al
+promediar globalmente, pierde sensibilidad a las lesiones
+pequeñas o periféricas (típicas de meningioma) y las confunde
+con tejido sano. A diferencia de OkanNet
+(Fig.~\ref{fig:cm-okannet}), donde las confusiones se
+distribuían de forma errática, ambas variantes del Modelo~2
+exhiben \textbf{patrones de error estructurados}: BN converge
+correctamente bajo el régimen de hiperparámetros adaptado.
 
 \subsection{Curvas de Entrenamiento}
 \label{sec:curvas}
@@ -204,6 +343,74 @@ contraste: el Baseline mantiene una trayectoria de mejora
 monótona, mientras que OkanNet oscila y converge a un máximo
 sustancialmente inferior.
 
+Las Figuras~\ref{fig:curvas-deep},~\ref{fig:curvas-deepgap}
+y~\ref{fig:comparacion-m2} reportan las curvas de
+entrenamiento de las dos variantes del Modelo~2.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{model-2/curvas_deep.png}
+\caption{Curvas de entrenamiento de DeepCNN-BN: pérdida,
+\textit{accuracy}, F1-macro y \textit{learning rate} en
+función de la época.}
+\label{fig:curvas-deep}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{model-2/curvas_deep_gap.png}
+\caption{Curvas de entrenamiento de DeepCNN-BN-GAP.}
+\label{fig:curvas-deepgap}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{model-2/comparacion_deep_vs_deepgap.png}
+\caption{Comparación del F1-Macro de validación entre
+DeepCNN-BN y DeepCNN-BN-GAP a lo largo del entrenamiento.}
+\label{fig:comparacion-m2}
+\end{figure}
+
+\noindent\textbf{Análisis de convergencia.} Las dos variantes
+del Modelo~2 alcanzaron su mejor F1-macro de validación en las
+épocas finales del presupuesto: $0{,}9112$ en la época~$50$
+(DeepCNN-BN) y $0{,}8988$ en la época~$49$ (DeepCNN-BN-GAP),
+ambas sin disparar el \textit{early stopping}. El tiempo de
+entrenamiento fue de $16$\,min $00$\,s para DeepCNN-BN y
+$18$\,min $27$\,s para DeepCNN-BN-GAP, aproximadamente
+$2\times$--$5\times$ los tiempos del Modelo~1, consistente con
+la mayor profundidad del \textit{backbone}.
+
+A diferencia de OkanNet, que oscilaba violentamente y disparaba
+\textit{early stopping} en la época~$17$ con un máximo de
+$0{,}6542$, ambas variantes del Modelo~2 exhiben curvas de
+F1-macro \emph{monótonas crecientes} prácticamente sin
+oscilaciones, alcanzando valores superiores al $0{,}90$ de
+forma estable. Esto confirma que la inestabilidad observada en
+OkanNet no era una propiedad de \textit{Batch Normalization}
+sino una consecuencia del régimen de hiperparámetros
+heredado del Modelo~1.
+
+La Figura~\ref{fig:comparacion-m2} contrasta directamente las
+dos variantes: durante las primeras épocas, DeepCNN-BN converge
+más rápido que DeepCNN-BN-GAP (epoch~$18$: F1
+$\sim 0{,}85$ vs $\sim 0{,}76$), reflejando que el cabezal FC
+tiene mayor capacidad de aprendizaje inicial. Sin embargo, la
+brecha se cierra progresivamente: al final del entrenamiento
+ambas variantes convergen a F1-macro de validación dentro de
+$1{,}2$ puntos porcentuales. En \textit{Testing}, no obstante,
+la brecha se amplía a $7{,}85$ puntos a favor de DeepCNN-BN,
+lo cual sugiere que el cabezal FC, además de aprender más
+rápido, generaliza marginalmente mejor a la distribución del
+\textit{holdout}.
+
+Que ninguna de las dos variantes dispare \textit{early
+stopping} sugiere que un presupuesto mayor de épocas
+(probablemente $75$--$100$) podría producir mejoras
+adicionales en validación, aunque no necesariamente en
+\textit{Testing} si la limitación dominante es la divergencia
+distribucional entre \textit{splits}.
+
 \subsection{Resultados Modelo 3 --- MRIResNet}
 \label{sec:resultados-m3}
 
@@ -223,17 +430,19 @@ La hipótesis de trabajo es que la representación explícita de
 bordes y contraste local favorece la discriminación entre las
 clases más difíciles (\textit{glioma} y \textit{meningioma}),
 cuya confusión era el error dominante del Modelo~1.
-
-\subsubsection*{Análisis por clase}
-
-La Tabla~\ref{tab:f1-clase} desglosa el F1-Score por clase del
-Modelo~3 sobre \textit{Testing}. Se espera que el canal Sobel
-mejore especialmente el Recall de \textit{glioma\_tumor}, cuya
-baja sensibilidad en el Modelo~1 ($0{,}2100$) se atribuía a la
-debilidad de sus bordes en la representación RGB.
-La atención SE, al ponderar los canales de forma dinámica,
-debería reforzar la señal de los canales CLAHE y Sobel cuando
-estos son diagnósticamente relevantes.
+El resultado empírico confirma parcialmente esta hipótesis:
+MRIResNet alcanza F1-Macro de $0{,}6593$ en \textit{Testing},
+mejorando al baseline en $+3{,}41$ pp y siendo el único modelo
+del trabajo que supera a M1.
+La mejora se concentra en las tres clases ``aprendibles''
+(\textit{meningioma}~$+1{,}46$ pp, \textit{no\_tumor}~$+3{,}71$
+pp, \textit{pituitary}~$+12{,}46$ pp respecto al baseline),
+mientras que \textit{glioma} sigue siendo el cuello de botella
+(F1 de $0{,}2906$, todavía por debajo de los $0{,}3307$ del
+baseline). Esto refuerza el hallazgo del Modelo~2: el problema
+de \textit{glioma} en este \textit{split} no se resuelve con
+mayor capacidad arquitectónica, sino que tiene origen
+distribucional.
 
 \subsubsection*{Matriz de confusión}
 
@@ -247,12 +456,12 @@ corresponden al Recall por clase.}
 \end{figure}
 
 La Figura~\ref{fig:cm-m3} muestra la matriz de confusión del
-Modelo~3. El patrón de interés clave es la frontera de decisión
-\textit{glioma}--\textit{meningioma}: si el preprocesamiento
-multimodal y la atención SE son efectivos, se espera observar
-una reducción del flujo de error
-\textit{glioma}$\to$\textit{meningioma} respecto a la
-Figura~\ref{fig:cm-baseline}.
+Modelo~3. Comparada con la del baseline
+(Fig.~\ref{fig:cm-baseline}), el flujo de error
+\textit{glioma}$\to$\textit{meningioma} persiste en magnitud
+similar, pero el Recall de las clases mayoritarias mejora
+notablemente, consistente con las ganancias por clase ya
+discutidas.
 
 \subsubsection*{Curvas de entrenamiento}
 

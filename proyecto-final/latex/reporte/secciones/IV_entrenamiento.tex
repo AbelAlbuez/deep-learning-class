@@ -52,6 +52,79 @@ fue de $7$\,min $44$\,s para el Baseline y $3$\,min $39$\,s
 para OkanNet, este último interrumpido por \textit{early
 stopping} en la época~$17$.
 
+\subsubsection*{Hiperparámetros del Modelo~2}
+\label{sec:hiperparam-m2}
+
+Las dos variantes del Modelo~2 (DeepCNN-BN y DeepCNN-BN-GAP)
+comparten un régimen de entrenamiento propio, distinto al del
+Modelo~1, motivado por el fallo de OkanNet:
+
+\begin{table}[!t]
+\centering
+\caption{Hiperparámetros del Modelo~2 (DeepCNN-BN y
+DeepCNN-BN-GAP). Idénticos en ambas variantes para aislar el
+efecto del cabezal.}
+\label{tab:hiperparam-m2}
+\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Hiperparámetro} & \textbf{Modelo 2} & \textbf{vs Modelo 1} \\
+\midrule
+Optimizador               & AdamW                     & Adam                    \\
+\quad $(\beta_1, \beta_2)$ & $(0{,}9, 0{,}999)$        & idéntico                \\
+\textit{Learning rate}    & $5\times 10^{-4}$         & $10^{-3}$ (M1)          \\
+\textit{Weight decay}     & $10^{-4}$                 & $0$                     \\
+\textit{Batch size}       & $64$                      & $32$ (M1)               \\
+Scheduler                 & ReduceLROnPlateau         & idéntico                \\
+\quad factor / patience   & $0{,}5$ / $3$             & idéntico                \\
+\quad $\eta_{\min}$       & $10^{-6}$                 & idéntico                \\
+Función de pérdida        & \texttt{CrossEntropyLoss} & idéntico                \\
+\quad con                 & \texttt{class\_weight}    & idéntico                \\
+\textit{Epochs} máx.      & $50$                      & $40$ (M1)               \\
+\textit{Early stopping}   & patience $=8$             & patience $=7$ (M1)      \\
+\quad criterio            & F1-macro val.             & idéntico                \\
+\textit{Split} train/val  & 80\,\%\,/\,20\,\%         & idéntico                \\
+\textit{Seed}             & $42$                      & idéntico                \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Tres ajustes distinguen al Modelo~2 del Modelo~1:
+
+\begin{enumerate}
+  \item \textbf{Optimizador AdamW en lugar de Adam.} La
+        diferencia clave es que AdamW desacopla
+        \textit{weight decay} del gradiente, evitando el
+        sesgo que Adam clásico introduce al combinar
+        \textit{L2 regularization} con momento
+        adaptativo~\cite{loshchilov2017decoupled}. Esto
+        habilita el uso de \textit{weight decay} no nulo
+        ($10^{-4}$) como regularización adicional.
+  \item \textbf{\textit{Learning rate} reducido y
+        \textit{batch size} duplicado.} La combinación
+        $\text{lr}=10^{-3}$ con $\text{batch}=32$
+        empleada en el Modelo~1 generó inestabilidad en
+        OkanNet (véase Tabla~\ref{tab:metricas-global}). En el
+        Modelo~2 se baja \textit{lr} a $5\times 10^{-4}$ y se
+        sube \textit{batch size} a $64$ para reducir la
+        varianza de las estadísticas estimadas por
+        \textit{mini-batch} en BN: con $\text{batch}=64$ la
+        estimación de medias y varianzas es más estable, lo
+        que evita el ``ruido amplificado'' que en OkanNet
+        provocó la divergencia.
+  \item \textbf{Mayor horizonte de entrenamiento.} El número
+        máximo de épocas sube de $40$ a $50$ y la paciencia
+        de \textit{early stopping} de $7$ a $8$, pues el
+        \textit{backbone} más profundo requiere más
+        iteraciones para converger.
+\end{enumerate}
+
+Bajo este régimen, ambas variantes se entrenan con los mismos
+hiperparámetros para que la única variable que distingue a
+DeepCNN-BN de DeepCNN-BN-GAP sea, efectivamente, el cabezal
+(FC vs GAP).
+
 \subsection{Protocolo de Entrenamiento}
 \label{sec:proto}
 La implementación se realiza íntegramente en \textbf{Python} con

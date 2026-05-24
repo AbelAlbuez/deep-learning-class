@@ -1,0 +1,12 @@
+Comparación DeepCNN-BN vs DeepCNN-BN-GAP (Modelo 2)
+====================================================
+
+Métrica               | DeepCNN-BN  | DeepCNN-GAP  | Δ
+----------------------+-------------+--------------+----------
+Accuracy              |   0.6472    |   0.5558    | -9.14%
+Precision (macro)     |   0.7403    |   0.6765    | -6.38%
+Recall (macro)        |   0.6351    |   0.5482    | -8.69%
+F1-Score (macro)      |   0.5961    |   0.5176    | -7.85%
+Parámetros            |  5,240,292 |  4,716,260  | -524,032
+Mejor epoch           |     50      |      49     |
+Tiempo entrenamiento  |   16m 00s  |   18m 27s |

@@ -1,4 +1,5 @@
 \section{Conclusiones}
+\label{sec:conclusiones}
 
 \textit{[PENDIENTE: discusión final estructurada en cuatro ejes:
 (i) si los resultados obtenidos por las CNN propias permiten
@@ -11,3 +12,68 @@ literatura que sí lo emplea; y (iv) trabajo futuro, incluyendo
 \textit{transfer learning} desde redes preentrenadas,
 segmentación previa de la región de interés, ampliación del
 dataset y validación con datos clínicos externos.]}
+
+\subsection*{Hallazgos del Modelo 2}
+
+El Modelo~2 (DeepCNN-BN y DeepCNN-BN-GAP) permite cerrar tres
+preguntas planteadas a la luz de los resultados del Modelo~1:
+
+\begin{enumerate}
+  \item \textbf{¿Es \textit{Batch Normalization} responsable
+        del colapso de OkanNet?} \textbf{No.} Bajo el régimen
+        adaptado (AdamW, lr=$5\times 10^{-4}$, bs=$64$,
+        wd=$10^{-4}$), una red con $10$ capas convolucionales
+        y BN tras cada una alcanza F1-macro de $0{,}5961$ en
+        \textit{Testing} ---$+17{,}28$ puntos porcentuales
+        sobre OkanNet---, con curvas de convergencia
+        monótonas y sin oscilaciones. El colapso de OkanNet
+        era atribuible a la combinación lr=$10^{-3}$ /
+        bs=$32$, no a BN como técnica. La hipótesis sostenida
+        en la Sección~\ref{sec:metricas-modelo} sobre el
+        Modelo~1 queda confirmada.
+
+  \item \textbf{¿Aporta el cabezal FC capacidad
+        discriminativa real frente a GAP?} \textbf{Sí, en
+        este dataset.} La variante DeepCNN-BN supera a
+        DeepCNN-BN-GAP por $7{,}85$ puntos de F1-macro en
+        \textit{Testing} ($0{,}5961$ vs $0{,}5176$), pese a
+        compartir el \textit{backbone} convolucional. La
+        brecha se concentra en las clases con mayor
+        variabilidad intra-clase (\textit{meningioma\_tumor}:
+        $+14{,}6$ pp). La hipótesis de que GAP rinde
+        equivalentemente cuando el \textit{backbone} es
+        suficientemente profundo \emph{no se sostiene} en
+        este corpus: los $\sim 524$\,K parámetros adicionales
+        del cabezal FC sí se traducen en mejor generalización.
+
+  \item \textbf{¿Resuelve el aumento de capacidad el sesgo
+        \textit{glioma}~$\to$~\textit{meningioma}?}
+        \textbf{No.} El Modelo~2 reproduce, e incluso
+        intensifica, el patrón Precision-Recall observado en
+        el baseline: alta Precision ($1{,}0000$ en DeepCNN-BN)
+        y bajísimo Recall ($0{,}1600$) sobre
+        \textit{glioma\_tumor}. Esto descarta una explicación
+        puramente arquitectónica del problema y refuerza la
+        hipótesis de divergencia distribucional entre los
+        \textit{splits} oficiales del dataset Sartaj Bhuvaji:
+        los gliomas del \textit{Testing} parecen provenir de
+        subtipos o protocolos de adquisición sub-representados
+        en \textit{Training}, lo cual el modelo no puede
+        compensar sin intervención en los datos.
+\end{enumerate}
+
+Como corolario práctico, el Modelo~2 \textbf{no supera al
+baseline en \textit{Testing}} ($0{,}5961$ vs $0{,}6252$,
+$-2{,}91$ pp), pese a triplicar la profundidad convolucional y
+añadir múltiples capas de regularización. Esta caída,
+consistente con la pérdida de $\sim 30$ puntos entre validación
+y prueba que afecta a todas las arquitecturas evaluadas en
+este trabajo, indica que el factor dominante de generalización
+\textbf{no es la capacidad del modelo sino el \textit{distribution
+shift} entre particiones}. Direcciones esperables para el
+Modelo~3 incluyen estrategias específicamente orientadas a este
+problema, como \textit{transfer learning} desde redes
+preentrenadas (que ya capturan invariancias robustas frente al
+\textit{shift}), aumento de datos basado en transformaciones
+físicamente plausibles para MRI, o esquemas de
+\textit{domain adaptation} entre \textit{splits}.

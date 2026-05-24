@@ -124,12 +124,190 @@ BN), y los hiperparámetros de entrenamiento se mantienen
 idénticos al \textit{baseline} para que la única variable que
 cambia entre ambas redes sea precisamente la presencia de BN.
 
-\subsection{Arquitectura Modelo 2 --- CNN Profunda o RNN}
-\textit{[PENDIENTE: descripción detallada del \texttt{model 2},
-incluyendo el uso de \textit{Batch Normalization} entre las
-capas convolucionales, \textit{Dropout} en las capas densas,
-mayor profundidad (bloques convolucionales adicionales) y
-justificación de cada elemento frente al \textit{baseline}.]}
+\subsection{Arquitectura Modelo 2 --- CNN Profunda con BN y Dropout}
+\label{sec:arq-m2}
+
+El Modelo~2 está motivado por una limitación específica del
+Modelo~1 documentada en la Sección~\ref{sec:arq-m1}: la
+versión comparativa OkanNet, que añade
+\textit{Batch Normalization} sobre el baseline manteniendo el
+resto de hiperparámetros, redujo el F1-macro de validación
+en lugar de mejorarlo. El análisis sugiere que esta caída no
+invalida BN como técnica, sino que evidencia su sensibilidad
+al régimen de entrenamiento. El Modelo~2 retoma esa hipótesis
+y la extiende: una red sustancialmente más profunda (10 capas
+convolucionales frente a 3), con BN tras cada \texttt{Conv2D}
+y \textit{Dropout2d} progresivo entre bloques, entrenada con
+un régimen de hiperparámetros propio.
+
+Adicionalmente se construye una segunda variante
+(\textit{DeepCNN-BN-GAP}) que comparte el mismo \textit{backbone}
+convolucional pero reemplaza el cabezal denso por
+\textit{Global Average Pooling} (GAP) seguido de una única capa
+\texttt{Linear}. Esta segunda red permite cuantificar el aporte
+real del cabezal FC, una vez que el \textit{backbone} ya tiene
+profundidad suficiente para producir representaciones
+discriminativas.
+
+\subsubsection*{Backbone convolucional}
+
+Ambas variantes comparten un \textit{backbone} VGG-style
+compuesto por cinco bloques, cada uno con dos capas
+\texttt{Conv2D} de kernel $3{\times}3$ seguidas de
+\texttt{BatchNorm2D}, \texttt{ReLU} y, salvo el último,
+\texttt{MaxPool2D} $2{\times}2$. Cada bloque finaliza con
+\texttt{Dropout2D} cuya tasa crece desde 0{,}10 hasta 0{,}30
+conforme aumenta la profundidad. La progresión de filtros
+$32{\to}64{\to}128{\to}256{\to}512$ duplica la capacidad
+representacional en cada nivel, siguiendo el patrón clásico
+de VGG~\cite{simonyan2014very}. El último bloque omite el
+\texttt{MaxPool} de manera deliberada para que la salida sea
+$(B, 512, 14, 14)$ en lugar de $(B, 512, 7, 7)$; esto permite
+aplicar \texttt{AdaptiveAvgPool2D} $(2, 2)$ posteriormente
+bajo el backend MPS de Apple, que requiere que el tamaño de
+entrada sea divisible por el de salida (14 es divisible por
+2, 7 no lo es).
+
+\begin{table}[!t]
+\centering
+\caption{\textit{Backbone} convolucional compartido por
+DeepCNN-BN y DeepCNN-BN-GAP. Entrada $(B, 3, 224, 224)$.
+Cada bloque ejecuta dos \texttt{Conv2D}-BN-ReLU consecutivas
+antes del \texttt{MaxPool} y \texttt{Dropout2D}.}
+\label{tab:arq-m2-backbone}
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{4pt}
+\footnotesize
+\begin{tabular}{@{}clcccr@{}}
+\toprule
+\textbf{\#} & \textbf{Bloque} & \textbf{Filtros} &
+\textbf{Pool} & \textbf{Salida $(C,H,W)$} & \textbf{Params} \\
+\midrule
+1 & 2$\times$Conv-BN-ReLU + MaxPool + D2d(0{,}10) & 32  & sí & $(32, 112, 112)$ & $10\,272$ \\
+2 & 2$\times$Conv-BN-ReLU + MaxPool + D2d(0{,}15) & 64  & sí & $(64,  56,  56)$ & $55\,680$ \\
+3 & 2$\times$Conv-BN-ReLU + MaxPool + D2d(0{,}20) & 128 & sí & $(128, 28,  28)$ & $221\,952$ \\
+4 & 2$\times$Conv-BN-ReLU + MaxPool + D2d(0{,}25) & 256 & sí & $(256, 14,  14)$ & $886\,272$ \\
+5 & 2$\times$Conv-BN-ReLU + D2d(0{,}30)           & 512 & no & $(512, 14,  14)$ & $3\,542\,016$ \\
+\midrule
+\multicolumn{5}{r}{\textbf{Subtotal \textit{backbone}:}} & $\mathbf{4\,716\,192}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection*{Cabezales: DeepCNN-BN vs DeepCNN-BN-GAP}
+
+A la salida del \textit{backbone} $(B, 512, 14, 14)$ se conectan
+dos cabezales distintos según la variante:
+
+\paragraph*{Variante A --- DeepCNN-BN (cabezal FC)}
+Aplica \texttt{AdaptiveAvgPool2D} $(2, 2)$ para reducir la
+información espacial a $(B, 512, 2, 2)$, equivalente a 2{,}048
+características al aplanar. Sobre ese vector se construye un
+cabezal denso compacto: \texttt{Linear(2048, 256)} $\to$
+\texttt{BatchNorm1D(256)} $\to$ \texttt{ReLU} $\to$
+\texttt{Dropout(0{,}5)} $\to$ \texttt{Linear(256, 4)}. Este
+diseño preserva la idea del baseline ---un cuello de botella
+denso antes de la salida--- pero introduce dos regularizadores:
+\textit{BatchNorm1D} estabiliza las activaciones a la entrada
+de la \texttt{Linear} final, y \textit{Dropout(0{,}5)} previene
+co-adaptación de neuronas.
+
+\paragraph*{Variante B --- DeepCNN-BN-GAP (cabezal GAP)}
+Aplica \texttt{AdaptiveAvgPool2D} $(1, 1)$, es decir,
+\textit{Global Average Pooling} clásico, reduciendo cada uno
+de los 512 mapas de activación a un escalar. El cabezal se
+limita a \texttt{Dropout(0{,}5)} $\to$ \texttt{Linear(512, 4)}.
+Esta elección sigue la línea de
+NIN~\cite{lin2013network} y ResNet~\cite{he2016deep}:
+sustituye el FC ``gigante'' por un promediado espacial que
+fuerza al \textit{backbone} a producir mapas semánticamente
+significativos, e introduce una regularización estructural
+implícita al eliminar $\sim$524\,K parámetros del cabezal.
+
+\begin{table}[!t]
+\centering
+\caption{Cabezales y conteo de parámetros de las dos variantes
+del Modelo~2.}
+\label{tab:arq-m2-cabezales}
+\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Componente} & \textbf{DeepCNN-BN} & \textbf{DeepCNN-BN-GAP} \\
+\midrule
+AdaptiveAvgPool2D    & $(2,2)$           & $(1,1)$ \\
+Salida del pool      & $(512, 2, 2)$     & $(512, 1, 1)$ \\
+Flatten              & $2\,048$          & $512$ \\
+Linear oculta        & $2048{\to}256$    & --- \\
+BatchNorm1D          & $256$             & --- \\
+Dropout              & $0{,}5$           & $0{,}5$ \\
+Linear salida        & $256{\to}4$       & $512{\to}4$ \\
+\midrule
+\textbf{Params backbone}  & $4\,716\,192$ & $4\,716\,192$ \\
+\textbf{Params cabezal}   & $524\,100$    & $2\,052$ \\
+\textbf{Total entrenable} & $\mathbf{5\,240\,292}$ & $\mathbf{4\,716\,260}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection*{Justificación de las decisiones de diseño}
+
+\begin{itemize}
+  \item \textbf{Profundidad ($10$ capas \texttt{Conv2D}).} El
+        baseline emplea $3$ capas \texttt{Conv2D}; el Modelo~2
+        triplica con creces esa cifra al apilar dos
+        \texttt{Conv2D} por bloque (estilo VGG). Esto permite
+        un campo receptivo efectivo mucho mayor sin recurrir a
+        \textit{kernels} grandes, manteniendo el bajo conteo
+        de parámetros por capa típico de las
+        \texttt{Conv2D} $3{\times}3$.
+  \item \textbf{\textit{Batch Normalization} en cada
+        \texttt{Conv2D}.} A diferencia de OkanNet, donde BN se
+        limitaba a $3$ ubicaciones, aquí aparece tras cada una
+        de las $10$ convoluciones. La técnica reduce el
+        \textit{internal covariate shift} y permite trabajar con
+        \textit{learning rates} relativamente altos, pero su
+        eficacia depende de un \textit{batch} suficientemente
+        grande: véase Sección~\ref{sec:hiperparam} para el
+        ajuste de \textit{batch size}.
+  \item \textbf{\textit{Dropout2D} con tasa creciente
+        ($0{,}10 \to 0{,}30$).} El uso de \textit{Dropout2D}
+        ---que elimina canales completos en lugar de elementos
+        individuales--- es más apropiado que el \textit{Dropout}
+        clásico en capas convolucionales, donde los píxeles
+        vecinos están altamente correlacionados~\cite{tompson2015efficient}.
+        La progresión creciente refleja que las capas profundas
+        son más propensas al sobreajuste por su mayor
+        especialización.
+  \item \textbf{\texttt{Conv2D} sin sesgo.} Las capas
+        \texttt{Conv2D} se configuran con \texttt{bias=False}
+        porque el sesgo es redundante cuando va seguido de
+        \texttt{BatchNorm}, que ya aprende un parámetro de
+        desplazamiento por canal.
+  \item \textbf{Inicialización \textit{Kaiming Normal}.} Se
+        aplica la misma estrategia que en el Modelo~1
+        ---\texttt{fan\_out} en \texttt{Conv2D},
+        \texttt{fan\_in} en \texttt{Linear}--- por la misma
+        razón: el cabezal FC denso de DeepCNN-BN
+        (\texttt{Linear(2048, 256)}) podría divergir bajo
+        \texttt{fan\_out} si la magnitud de preactivaciones se
+        amplifica con BN.
+  \item \textbf{Dos cabezales contrastables.} La hipótesis
+        implícita es que, con un \textit{backbone} ya profundo
+        y regularizado, el FC denso de DeepCNN-BN no
+        necesariamente aporta capacidad discriminativa real
+        sobre el GAP. La comparación entre ambas variantes,
+        manteniendo idénticos hiperparámetros, permite verificar
+        empíricamente esta hipótesis.
+\end{itemize}
+
+El número total de parámetros entrenables es $5\,240\,292$
+para DeepCNN-BN y $4\,716\,260$ para DeepCNN-BN-GAP. Ambos
+valores están por debajo de los $6\,446\,756$ del baseline
+pese a una profundidad $\sim 3{,}3\times$ mayor, lo cual ilustra
+el aporte estructural de las \texttt{Conv2D} $3{\times}3$
+encadenadas frente al cabezal FC denso dominante en el
+baseline.
 
 \subsection{Arquitectura Modelo 3 --- MRIResNet con Atención SE}
 \label{sec:arq-m3}
