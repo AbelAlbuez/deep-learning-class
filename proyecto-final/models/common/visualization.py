@@ -83,9 +83,9 @@ def plot_confusion_matrix(
         cbar_kws={"label": "%"},
         ax=ax,
     )
-    ax.set_xlabel("Predicted")
-    ax.set_ylabel("Actual")
-    ax.set_title("Confusion matrix (% by actual class)")
+    ax.set_xlabel("Predicho")
+    ax.set_ylabel("Real")
+    ax.set_title("Matriz de confusión (% por clase real)")
     plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
     fig.tight_layout()
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
