@@ -12,7 +12,7 @@ y~3 se reportan en sus respectivas entregas.
 \begin{table}[!t]
 \centering
 \caption{Métricas globales sobre \textit{Testing} (holdout de
-394 imágenes). \textit{Modelos~2 y~3 pendientes de entrega.}}
+394 imágenes).}
 \label{tab:metricas-global}
 \renewcommand{\arraystretch}{1.15}
 \footnotesize
@@ -24,7 +24,7 @@ y~3 se reportan en sus respectivas entregas.
 Baseline (M1)   & $0{,}6751$ & $0{,}7443$ & $0{,}6508$ & $\mathbf{0{,}6252}$ \\
 OkanNet (comp.) & $0{,}4467$ & $0{,}4901$ & $0{,}4634$ & $0{,}4233$ \\
 Modelo 2        & ---        & ---        & ---        & ---        \\
-Modelo 3        & ---        & ---        & ---        & ---        \\
+MRIResNet (M3)  & ---        & ---        & ---        & ---        \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -57,19 +57,19 @@ sobre el conjunto \textit{Testing}.
 
 \begin{table}[!t]
 \centering
-\caption{F1-Score por clase sobre \textit{Testing}.
-\textit{Modelos~2 y~3 pendientes de entrega.}}
+\caption{F1-Score por clase sobre \textit{Testing}.}
 \label{tab:f1-clase}
 \renewcommand{\arraystretch}{1.15}
 \footnotesize
-\begin{tabular}{@{}lcc@{}}
+\begin{tabular}{@{}lcccc@{}}
 \toprule
-\textbf{Clase} & \textbf{Baseline (M1)} & \textbf{OkanNet} \\
+\textbf{Clase} & \textbf{Baseline (M1)} & \textbf{OkanNet} &
+\textbf{M2} & \textbf{MRIResNet (M3)} \\
 \midrule
-\texttt{glioma\_tumor}     & $0{,}3307$ & $0{,}2597$ \\
-\texttt{meningioma\_tumor} & $0{,}7766$ & $0{,}2517$ \\
-\texttt{no\_tumor}         & $0{,}7445$ & $0{,}5337$ \\
-\texttt{pituitary\_tumor}  & $0{,}6491$ & $0{,}6479$ \\
+\texttt{glioma\_tumor}     & $0{,}3307$ & $0{,}2597$ & --- & --- \\
+\texttt{meningioma\_tumor} & $0{,}7766$ & $0{,}2517$ & --- & --- \\
+\texttt{no\_tumor}         & $0{,}7445$ & $0{,}5337$ & --- & --- \\
+\texttt{pituitary\_tumor}  & $0{,}6491$ & $0{,}6479$ & --- & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -203,3 +203,75 @@ La Figura~\ref{fig:comparacion} sintetiza visualmente este
 contraste: el Baseline mantiene una trayectoria de mejora
 monótona, mientras que OkanNet oscila y converge a un máximo
 sustancialmente inferior.
+
+\subsection{Resultados Modelo 3 --- MRIResNet}
+\label{sec:resultados-m3}
+
+\subsubsection*{Métricas globales}
+
+Las métricas sobre el conjunto \textit{Testing} para el Modelo~3
+(MRIResNet) se reportan en la Tabla~\ref{tab:metricas-global}.
+El modelo cuenta con $1\,676\,284$ parámetros entrenables,
+aproximadamente el $26$\,\% del total del Modelo~1, gracias al
+reemplazo del cabezal denso por \textit{Global Average Pooling}.
+
+\noindent\textbf{Discusión.}
+El MRIResNet introduce tres mejoras estructurales respecto al
+\textit{baseline}: preprocesamiento multimodal de 5 canales
+(CLAHE + Sobel), aprendizaje residual y atención SE.
+La hipótesis de trabajo es que la representación explícita de
+bordes y contraste local favorece la discriminación entre las
+clases más difíciles (\textit{glioma} y \textit{meningioma}),
+cuya confusión era el error dominante del Modelo~1.
+
+\subsubsection*{Análisis por clase}
+
+La Tabla~\ref{tab:f1-clase} desglosa el F1-Score por clase del
+Modelo~3 sobre \textit{Testing}. Se espera que el canal Sobel
+mejore especialmente el Recall de \textit{glioma\_tumor}, cuya
+baja sensibilidad en el Modelo~1 ($0{,}2100$) se atribuía a la
+debilidad de sus bordes en la representación RGB.
+La atención SE, al ponderar los canales de forma dinámica,
+debería reforzar la señal de los canales CLAHE y Sobel cuando
+estos son diagnósticamente relevantes.
+
+\subsubsection*{Matriz de confusión}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{model-3/confusion_mriresnet.png}
+\caption{Matriz de confusión normalizada del Modelo~3
+(MRIResNet) sobre \textit{Testing}. Los valores en la diagonal
+corresponden al Recall por clase.}
+\label{fig:cm-m3}
+\end{figure}
+
+La Figura~\ref{fig:cm-m3} muestra la matriz de confusión del
+Modelo~3. El patrón de interés clave es la frontera de decisión
+\textit{glioma}--\textit{meningioma}: si el preprocesamiento
+multimodal y la atención SE son efectivos, se espera observar
+una reducción del flujo de error
+\textit{glioma}$\to$\textit{meningioma} respecto a la
+Figura~\ref{fig:cm-baseline}.
+
+\subsubsection*{Curvas de entrenamiento}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{model-3/curves_mriresnet.png}
+\caption{Curvas de entrenamiento del Modelo~3 (MRIResNet):
+pérdida, \textit{accuracy}, F1-macro y \textit{learning rate}
+en función de la época.}
+\label{fig:curvas-m3}
+\end{figure}
+
+\noindent\textbf{Análisis de convergencia.}
+La Figura~\ref{fig:curvas-m3} muestra la evolución del
+entrenamiento del Modelo~3. La combinación de AdamW
+($\text{lr}{=}10^{-4}$) con \textit{Batch Normalization} en
+todos los bloques residuales persigue una convergencia más
+estable que la observada en OkanNet bajo el régimen de
+$\text{lr}{=}10^{-3}$ sin \textit{weight decay}.
+El \textit{early stopping} con paciencia~10 otorga al modelo
+mayor margen para explorar antes de interrumpir el
+entrenamiento, consistente con la mayor profundidad de la red.

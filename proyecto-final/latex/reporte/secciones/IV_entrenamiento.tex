@@ -85,3 +85,63 @@ entrenamiento y en la selección del mejor \textit{checkpoint}.
 El conjunto \textit{Testing} original se reserva como
 \textit{holdout} independiente y solo se emplea en la evaluación
 final reportada en la sección de resultados.
+
+\subsection{Hiperparámetros Modelo 3}
+\label{sec:hiperparam-m3}
+
+La Tabla~\ref{tab:hiperparam-m3} resume los hiperparámetros
+empleados para entrenar el Modelo~3 (MRIResNet).
+Las diferencias más relevantes respecto al Modelo~1 son el uso
+de \textbf{AdamW} con \textit{weight decay} desacoplado ---en
+lugar de Adam sin regularización--- y un \textit{learning rate}
+inicial diez veces menor, coherente con la mayor profundidad de la
+red y la presencia de \textit{Batch Normalization} en todos los
+bloques residuales.
+
+\begin{table}[!t]
+\centering
+\caption{Hiperparámetros del Modelo~3 (MRIResNet).}
+\label{tab:hiperparam-m3}
+\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Hiperparámetro} & \textbf{MRIResNet (M3)} \\
+\midrule
+Optimizador                 & AdamW                     \\
+\quad $(\beta_1, \beta_2)$  & $(0{,}9,\;0{,}999)$       \\
+Learning rate inicial       & $1\times10^{-4}$          \\
+\textit{Weight decay}       & $1\times10^{-4}$          \\
+Scheduler                   & ReduceLROnPlateau         \\
+\quad factor / patience     & $0{,}5$ / $5$             \\
+\quad $\eta_{\min}$         & $1\times10^{-6}$          \\
+Función de pérdida          & CrossEntropyLoss          \\
+\quad con                   & \texttt{class\_weight}    \\
+\textit{Batch size}         & $32$                      \\
+\textit{Epochs} máx.        & $50$                      \\
+\textit{Early stopping}     & patience $= 10$           \\
+\quad criterio              & F1-macro val.             \\
+\textit{Split} train/val  & 80\% / 20\% \\
+\textit{Seed}               & $42$                      \\
+\midrule
+Canales de entrada          & $5$ (R, G, B, CLAHE, Sobel) \\
+Parámetros entrenables      & $1\,676\,284$             \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La elección de \textbf{AdamW} frente a Adam responde a que el
+\textit{weight decay} desacoplado de AdamW actúa como
+regularización $L_2$ explícita independiente del \textit{learning
+rate}, lo cual es especialmente beneficioso en redes con
+\textit{Batch Normalization}~\cite{loshchilov2019adamw}.
+El uso de \texttt{class\_weight} calculado con la fórmula
+\textit{balanced} de \texttt{scikit-learn} se mantiene respecto
+al Modelo~1 para corregir el desbalance documentado en la
+Sección~\ref{sec:hiperparam}.
+
+El protocolo de entrenamiento es análogo al descrito en la
+Sección~\ref{sec:proto}: división 80/20, monitorización del
+F1-macro de validación para el \textit{scheduler} y el
+\textit{early stopping}, y registro de métricas por época en
+un archivo \texttt{.csv}.

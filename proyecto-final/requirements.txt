@@ -8,3 +8,4 @@ scikit-learn
 Pillow
 tqdm
 kaggle
+opencv-python

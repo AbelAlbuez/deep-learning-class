@@ -124,16 +124,159 @@ BN), y los hiperparámetros de entrenamiento se mantienen
 idénticos al \textit{baseline} para que la única variable que
 cambia entre ambas redes sea precisamente la presencia de BN.
 
-\subsection{Arquitectura Modelo 2 --- CNN Profunda}
+\subsection{Arquitectura Modelo 2 --- CNN Profunda o RNN}
 \textit{[PENDIENTE: descripción detallada del \texttt{model 2},
 incluyendo el uso de \textit{Batch Normalization} entre las
 capas convolucionales, \textit{Dropout} en las capas densas,
 mayor profundidad (bloques convolucionales adicionales) y
 justificación de cada elemento frente al \textit{baseline}.]}
 
-\subsection{Arquitectura Modelo 3 --- CNN con Técnica Avanzada}
-\textit{[PENDIENTE: descripción del \texttt{model 3}, integrando
-una técnica avanzada construida desde cero (por ejemplo, bloques
-residuales tipo ResNet, \textit{Global Average Pooling}, módulos
-de atención o conexiones densas), manteniendo la restricción de
-no usar pesos preentrenados.]}
+\subsection{Arquitectura Modelo 3 --- MRIResNet con Atención SE}
+\label{sec:arq-m3}
+
+El Modelo~3, denominado \textbf{MRIResNet}, extiende el
+\textit{baseline} en tres ejes: (i)~un preprocesamiento multimodal
+de cinco canales que enriquece la representación de entrada,
+(ii)~bloques residuales con conexiones \textit{skip} que mitigan
+la degradación del gradiente en redes profundas, y (iii)~módulos
+de atención \textit{Squeeze-and-Excitation} (SE)~\cite{hu2018senet}
+para la priorización adaptativa de características.
+
+\subsubsection*{Preprocesamiento multimodal (5 canales)}
+
+En lugar de la representación RGB $(B,3,224,224)$, el Modelo~3
+recibe un tensor $(B,5,224,224)$ generado mediante:
+
+\begin{enumerate}
+  \item \textbf{Conversión RGB y redimensionado} a $224{\times}224$.
+  \item \textbf{CLAHE} (\textit{Contrast Limited Adaptive Histogram
+        Equalization}, $\text{clipLimit}{=}2{,}0$,
+        $\text{tileGrid}{=}8{\times}8$): ecualización local del
+        histograma con límite de contraste, que mejora la visibilidad
+        de bordes tumorales sin amplificar el ruido global.
+  \item \textbf{Sobel}: gradiente espacial
+        $G {=} \sqrt{G_x^2{+}G_y^2}$, normalizado a $[0,1]$
+        y aplicado sobre la imagen CLAHE para maximizar la calidad
+        de los bordes extraídos.
+  \item \textbf{Fusión}: concatenación de los canales
+        $[\,R,\,G,\,B,\,\text{CLAHE},\,\text{Sobel}\,]$.
+  \item \textbf{Normalización canal a canal} con estadísticos
+        $(\mu_c, \sigma_c)$ estimados sobre el conjunto
+        \textit{Training}.
+\end{enumerate}
+
+Este diseño está conceptualmente inspirado en los hallazgos de
+Hubel y Wiesel~\cite{hubel1959receptive} sobre la selectividad
+orientacional de las neuronas de la corteza visual primaria, cuya
+sensibilidad a bordes y orientaciones motivó el diseño de los
+primeros filtros convolucionales aprendibles.
+
+\subsubsection*{Bloques residuales}
+
+Cada bloque residual aprende la transformación
+$\mathcal{F}(\mathbf{x}) {+} \mathbf{x}$~\cite{he2016resnet},
+con estructura interna:
+\texttt{Conv}$(3{\times}3)$--\texttt{BN}--\texttt{ReLU}--%
+\texttt{Conv}$(3{\times}3)$--\texttt{BN}$\oplus\mathbf{x}$--%
+\texttt{ReLU}.
+Cuando el número de canales entre entrada y salida difiere,
+el camino \textit{skip} incorpora una proyección
+\texttt{Conv}$(1{\times}1)${+}\texttt{BN}
+para alinear dimensiones sin parámetros adicionales
+significativos.
+
+\subsubsection*{Módulo Squeeze-and-Excitation}
+
+El módulo SE recalibra los canales en tres etapas:
+
+\begin{enumerate}
+  \item \textbf{Squeeze}: \textit{Global Average Pooling}
+        $z_c = \frac{1}{H{\times}W}\sum_{i,j} x_c(i,j)$
+        $\to$ descriptor $\mathbf{z}\in\mathbb{R}^C$.
+  \item \textbf{Excitation}: \texttt{FC}--\texttt{ReLU}--%
+        \texttt{FC}--\texttt{Sigmoid} $\to$ pesos por canal
+        $\mathbf{s}\in[0,1]^C$, con ratio de reducción $r{=}8$.
+  \item \textbf{Reescalado}: $\hat{x}_c = s_c \cdot x_c$,
+        amplificando características relevantes y suprimiendo
+        las irrelevantes.
+\end{enumerate}
+
+\begin{table*}[!t]
+\centering
+\caption{Arquitectura del Modelo~3 (MRIResNet). Entrada
+$(B,5,224,224)$. ResBlock($a{\to}b$): bloque residual con $a$
+canales de entrada y $b$ de salida. SE: módulo
+Squeeze-and-Excitation con $r{=}8$.}
+\label{tab:arq-m3}
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{6pt}
+\footnotesize
+\begin{tabular}{@{}clcc@{}}
+\toprule
+\textbf{Etapa} & \textbf{Componentes} &
+\textbf{Salida $(C,H,W)$} & \textbf{Params} \\
+\midrule
+Inicial &
+  Conv$(5{\to}32,3{\times}3)$+BN+ReLU+MaxPool &
+  $(32,112,112)$ & $1\,504$ \\
+Etapa~1 &
+  2$\times$[ResBlock$(32{\to}32)$+SE]+MaxPool &
+  $(32,56,56)$ & $37\,704$ \\
+Etapa~2 &
+  2$\times$[ResBlock$(32{\to}64)$+SE]+MaxPool &
+  $(64,28,28)$ & $133\,904$ \\
+Etapa~3 &
+  2$\times$[ResBlock$(64{\to}128)$+SE]+MaxPool &
+  $(128,14,14)$ & $534\,048$ \\
+Etapa~4 &
+  ResBlock$(128{\to}256)$+SE &
+  $(256,14,14)$ & $935\,712$ \\
+GAP &
+  \texttt{AdaptiveAvgPool2d(1)} &
+  $(256,1,1)$ & $0$ \\
+Cabezal &
+  Linear$(256{\to}128)$+ReLU+Drop$(0{,}5)$+Linear$(128{\to}4)$ &
+  $(4,)$ & $33\,412$ \\
+\midrule
+\multicolumn{3}{r}{\textbf{Total parámetros entrenables:}} &
+  $\mathbf{1\,676\,284}$ \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+Las decisiones de diseño se justifican como sigue:
+
+\begin{itemize}
+  \item \textbf{Entrada de 5 canales}: la primera convolución acepta
+        \texttt{Conv2d(5,\,32,\,3)} en lugar de 3 canales, procesando
+        simultáneamente textura RGB, contraste local (CLAHE) y
+        gradientes estructurales (Sobel).
+  \item \textbf{Cuatro etapas residuales} con canales
+        $32{\to}64{\to}128{\to}256$, siguiendo la progresión
+        geométrica de ResNet~\cite{he2016resnet}.
+        Las tres primeras etapas aplican
+        \textit{MaxPool}~$2{\times}2$; la cuarta preserva la
+        resolución $14{\times}14$ para que el GAP agregue
+        información espacial de mayor granularidad.
+  \item \textbf{Global Average Pooling} reemplaza el cabezal
+        \texttt{Flatten\,$\to$\,Linear(50\,176,\,128)} del Modelo~1,
+        reduciendo los parámetros de $6{,}44M$ a $1{,}68M$
+        (${\approx}74$\,\% menos) y mejorando la robustez espacial.
+  \item \textbf{Módulos SE con $r{=}8$}: el ratio garantiza al menos
+        4 unidades ocultas en las etapas de 32 canales
+        ($32/8{=}4$), equilibrando capacidad expresiva y coste
+        computacional.
+  \item \textbf{Inicialización Kaiming}: idéntica al Modelo~1,
+        con modo \texttt{fan\_out} para \texttt{Conv2d} y
+        \texttt{fan\_in} para \texttt{Linear}.
+  \item \textbf{\textit{Dropout}~(0{,}5)} aplicado únicamente en el
+        cabezal, evitando interrumpir el flujo residual dentro de
+        los bloques~\cite{he2016resnet}.
+\end{itemize}
+
+El total de parámetros entrenables es de $1\,676\,284$, frente a
+los $6\,446\,756$ del Modelo~1. La diferencia se debe
+exclusivamente al reemplazo del cabezal denso por GAP: el bloque
+convolucional resultante es considerablemente más profundo
+($4$ etapas residuales vs.\ $3$ bloques simples) pero
+paramé\-tricamente más eficiente.
